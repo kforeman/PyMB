@@ -34,8 +34,10 @@ startup Python or an iPython notebook, and `import PyMB`.
 
 ## License
 PyMB - Python Model Builder
+
 Copyright (C) 2015 Kyle Foreman
-Email: kforeman <at> post <dot> harvard <dot> edu
+
+Email: kforeman \<at\> post \<dot\> harvard \<dot\> edu
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
