@@ -32,22 +32,20 @@ A demo [iPython notebook](http://ipython.org/notebook.html) can be found at
 `setup.py` has not yet been added. For now simply `git clone git@github.com:kforeman/PyMB.git` into your working directory, 
 startup Python or an iPython notebook, and `import PyMB`.
 
-## License
-PyMB - Python Model Builder
-
-Copyright (C) 2015 Kyle Foreman
-
-Email: kforeman \<at\> post \<dot\> harvard \<dot\> edu
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+## License (GPLv2)
+    PyMB - Python Model Builder
+    Copyright (C) 2015 Kyle Foreman
+    Email: kforeman <at> post <dot> harvard <dot> edu
+  
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+    
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+    
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
