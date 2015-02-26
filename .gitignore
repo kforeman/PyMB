@@ -1,0 +1,6 @@
+tmb_tmp/
+*.so
+*.o
+*.pyc
+.ipynb_checkpoints/
+.DS_Store
