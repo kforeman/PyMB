@@ -305,7 +305,7 @@ class model:
                     self.parameters[m] = {
                         'mean': fixed_mean[i],
                         'sd': fixed_sd[i],
-                        'draws': fixed_draws[i,]
+                        'draws': fixed_draws[i,] if len(i) > 1 else fixed_draws[i,].reshape(draws)
                     }
                 else:
                     self.parameters[m] = {
@@ -354,7 +354,7 @@ class model:
                     self.parameters[m] = {
                         'mean': means[i],
                         'sd': sds[i],
-                        'draws': ran_draws[i,]
+                        'draws': ran_draws[i,] if len(i) > 1 else ran_draws[i,].reshape(draws)
                     }
                 else:
                     self.parameters[m] = {
