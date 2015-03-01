@@ -370,5 +370,12 @@ class model:
         '''
         np.set_printoptions(threshold=5, edgeitems=2)
         for p,v in self.parameters.iteritems():
-            print('{p}:\n\tmean\t{m}\n\tsd\t{s}\n\tdraws\t{d}\n\tshape\t{z}'.format(p=p, m=v['mean'], s=v['sd'], d=v['draws'] if 'draws' in v else None, z=v['draws'].shape))
+            if 'draws' in v:
+                d = v['draws']
+                if d.ndim == 1:
+                    print('{p}:\n\tmean\t{m}\n\tsd\t{s}\n\tdraws\t{d}\n\tshape\t{z}'.format(p=p, m=v['mean'], s=v['sd'], d=d, z=d.shape))
+                else:
+                    print('{p}:\n\tmean\t{m}\n\tsd\t{s}\n\tdraws\t{d}\n\tshape\t{z}'.format(p=p, m=v['mean'], s=v['sd'], d='[{0},\n\t\t ...,\n\t\t {1}]'.format(d[0,], d[d.shape[0]-1,]), z=d.shape))
+            else:
+                print('{p}:\n\tmean\t{m}\n\tsd\t{s}\n\tdraws\tNone'.format(p=p, m=v['mean'], s=v['sd']))
         np.set_printoptions(threshold=1000, edgeitems=3)
