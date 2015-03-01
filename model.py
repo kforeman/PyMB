@@ -305,7 +305,7 @@ class model:
                     self.parameters[m] = {
                         'mean': fixed_mean[i],
                         'sd': fixed_sd[i],
-                        'draws': fixed_draws[i,] if len(i) > 1 else fixed_draws[i,].reshape(draws)
+                        'draws': fixed_draws[i,]
                     }
                 else:
                     self.parameters[m] = {
@@ -354,7 +354,7 @@ class model:
                     self.parameters[m] = {
                         'mean': means[i],
                         'sd': sds[i],
-                        'draws': ran_draws[i,] if len(i) > 1 else ran_draws[i,].reshape(draws)
+                        'draws': ran_draws[i,]
                     }
                 else:
                     self.parameters[m] = {
@@ -372,7 +372,7 @@ class model:
         for p,v in self.parameters.iteritems():
             if 'draws' in v:
                 d = v['draws']
-                if d.ndim == 1:
+                if d.shape[0] == 1:
                     print('{p}:\n\tmean\t{m}\n\tsd\t{s}\n\tdraws\t{d}\n\tshape\t{z}'.format(p=p, m=v['mean'], s=v['sd'], d=d, z=d.shape))
                 else:
                     print('{p}:\n\tmean\t{m}\n\tsd\t{s}\n\tdraws\t{d}\n\tshape\t{z}'.format(p=p, m=v['mean'], s=v['sd'], d='[{0},\n\t\t ...,\n\t\t {1}]'.format(d[0,], d[d.shape[0]-1,]), z=d.shape))
