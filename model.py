@@ -331,13 +331,13 @@ class model:
                 if m in ran_names:
                     # index in random effects vectors
                     i_ran = [ii for ii,mm in enumerate(ran_names) if mm == m]
-                    means[i_joint] = ran_mean[i_ran]
-                    sds[i_joint] = ran_sd[i_ran]
+                    means[i_joint] = ran_mean[i_ran].reshape([len(i_joint),1])
+                    sds[i_joint] = ran_sd[i_ran].reshape([len(i_joint),1])
                 else:
                     # index in fixed effects vectors
                     i_fixed = [ii for ii,mm in enumerate(fixed_names) if mm == m]
-                    means[i_joint] = fixed_mean[i_fixed]
-                    sds[i_joint] = fixed_sd[i_fixed]
+                    means[i_joint] = fixed_mean[i_fixed].reshape([len(i_joint),1])
+                    sds[i_joint] = fixed_sd[i_fixed].reshape([len(i_joint),1])
             # draws (http://en.wikipedia.org/wiki/Multivariate_normal_distribution#Drawing_values_from_the_distribution)
             z = np.random.normal(size=(means.shape[0],n))
             L_inv = cholesky(joint_prec)
