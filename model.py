@@ -215,7 +215,7 @@ class model:
             parameters=self.R.ListVector(self.init), hessian=hessian, **kwargs)
 
 
-    def optimize(self, opt_fun='nlminb', method='L-BFGS-B', draw=100, **kwargs):
+    def optimize(self, opt_fun='nlminb', method='L-BFGS-B', draws=100, **kwargs):
         '''
         Optimize the model and store results in TMB_Model.TMB.fit
 
@@ -225,7 +225,7 @@ class model:
             the R optimization function to use (e.g. 'nlminb' or 'optim')
         method : str, default 'L-BGFS-B'
             method to use for optimization
-        draw : int or Boolean, default 100
+        draws : int or Boolean, default 100
             if Truthy, will automatically simulate draws from the posterior
         **kwargs: additional arguments to be passed to the R optimization function
         '''
@@ -242,12 +242,8 @@ class model:
         print('\nModel optimization complete in {:.1f}s.\n'.format(time.time()-start))
 
         # simulate parameters
-        if draw:
-            print('\n{}\n'.format(''.join(['-' for i in range(80)])))
-            if type(draw) == int:
-                self.simulate_parameters(n = draw)
-            else:
-                self.simulate_parameters()
+        print('\n{}\n'.format(''.join(['-' for i in range(80)])))
+        self.simulate_parameters(draws=draws)
 
     def report(self, name):
         '''
@@ -260,7 +256,7 @@ class model:
         '''
         return np.array(get_R_attr(get_R_attr(self.TMB.model, 'report')(), name))
 
-    def simulate_parameters(self, n=100):
+    def simulate_parameters(self, draws=100, random=True, fixed=False):
         '''
         Simulate draws from the posterior variance/covariance matrix of the fixed and random effects
 
@@ -268,8 +264,12 @@ class model:
 
         Parameters
         ----------
-        n : int, default 1000
-            number of draws to make
+        draws : int or boolean, default 1000
+            if Truthy, number of correlated draws to simulate from the posterior
+        random : boolean, default True
+            whether to simulate random effects
+        fixed : boolean, default False
+            whether to simulate fixed effects
         '''
         # time function
         start = time.time()
@@ -284,7 +284,7 @@ class model:
             self.sdreport = self.TMB.sdreport(self.TMB.model, getJointPrecision=True)
 
         # fixed effects only models
-        if self.fixed and not self.random:
+        if self.fixed and fixed:
             # means
             fixed_mean = np.array(get_R_attr(self.sdreport, 'par.fixed'))
             # precision matrix (note: for fixed effects, the var/cov matrix is returned so must invert it)
@@ -293,64 +293,75 @@ class model:
             # sd
             fixed_sd = np.sqrt(np.diag(fixed_vcov))
             # draws (http://en.wikipedia.org/wiki/Multivariate_normal_distribution#Drawing_values_from_the_distribution)
-            z = np.random.normal(size=(fixed_mean.shape[0],n))
-            L_inv = np.linalg.cholesky(fixed_prec)
-            fixed_draws = fixed_mean.reshape((fixed_mean.shape[0], 1)) + np.linalg.solve(L_inv, np.linalg.solve(L_inv.T, z))
+            if draws:
+                z = np.random.normal(size=(fixed_mean.shape[0],draws))
+                L_inv = np.linalg.cholesky(fixed_prec)
+                fixed_draws = fixed_mean.reshape((fixed_mean.shape[0], 1)) + np.linalg.solve(L_inv, np.linalg.solve(L_inv.T, z))
             # save results
             names = get_R_attr(self.sdreport, 'par.fixed').names
             for m in set(names):
                 i = [ii for ii,mm in enumerate(names) if mm == m] # names will be the same for every item in a vector/matrix, so find all corresponding indices
-                self.parameters[m] = {
-                    'mean': fixed_mean[i],
-                    'sd': fixed_sd[i],
-                    'draws': fixed_draws[i,]
-                }
+                if draws:
+                    self.parameters[m] = {
+                        'mean': fixed_mean[i],
+                        'sd': fixed_sd[i],
+                        'draws': fixed_draws[i,]
+                    }
+                else:
+                    self.parameters[m] = {
+                        'mean': fixed_mean[i],
+                        'sd': fixed_sd[i]
+                    }
 
         # random effects models
-        else:
+        if self.random and random:
             from scikits.sparse.cholmod import cholesky
             from scipy.sparse import csc_matrix
             # means
             ran_mean = np.array(get_R_attr(self.sdreport, 'par.random'))
-            fixed_mean = np.array(get_R_attr(self.sdreport, 'par.fixed'))
-            # joint precision matrix
-            joint_prec = csc_matrix(self.R.r['as.matrix'](get_R_attr(self.sdreport, 'jointPrecision')))
-            # sd
-            fixed_sd = np.sqrt(np.diag(np.array(get_R_attr(self.sdreport, 'cov.fixed'))))
-            ran_sd = np.sqrt(np.array(get_R_attr(self.sdreport, 'diag.cov.random')))
-            # find names of parameters on joint precision matrix
-            joint_names = self.R.r['row.names'](get_R_attr(self.sdreport, 'jointPrecision'))
             ran_names = get_R_attr(self.sdreport, 'par.random').names
-            fixed_names = get_R_attr(self.sdreport, 'par.fixed').names
+            # sd
+            ran_sd = np.sqrt(np.array(get_R_attr(self.sdreport, 'diag.cov.random')))
+            if draws:
+                # joint precision matrix
+                joint_prec_full = get_R_attr(self.sdreport, 'jointPrecision')
+                # keep only random effects from joint precision matrix
+                joint_prec = self.R.r('function(mat, ran) { ii <- rownames(mat) %in% ran; return(as.matrix(mat[ii,ii])) }')(joint_prec_full, self.random)
+                # find names of parameters on joint precision matrix
+                joint_names = self.R.r['row.names'](joint_prec)
             # sort means appropriately
+            if not draws:
+                joint_names = ran_names
             means = np.empty(shape=(len(joint_names),1))
             sds = np.empty(shape=(len(joint_names),1))
             for m in set(joint_names):
                 # index in joint
                 i_joint = [ii for ii,mm in enumerate(joint_names) if mm == m]
-                if m in ran_names:
-                    # index in random effects vectors
-                    i_ran = [ii for ii,mm in enumerate(ran_names) if mm == m]
-                    means[i_joint] = ran_mean[i_ran].reshape([len(i_joint),1])
-                    sds[i_joint] = ran_sd[i_ran].reshape([len(i_joint),1])
-                else:
-                    # index in fixed effects vectors
-                    i_fixed = [ii for ii,mm in enumerate(fixed_names) if mm == m]
-                    means[i_joint] = fixed_mean[i_fixed].reshape([len(i_joint),1])
-                    sds[i_joint] = fixed_sd[i_fixed].reshape([len(i_joint),1])
+                i_ran = [ii for ii,mm in enumerate(ran_names) if mm == m]
+                means[i_joint] = ran_mean[i_ran].reshape([len(i_joint),1])
+                sds[i_joint] = ran_sd[i_ran].reshape([len(i_joint),1])
             # draws (http://en.wikipedia.org/wiki/Multivariate_normal_distribution#Drawing_values_from_the_distribution)
-            z = np.random.normal(size=(means.shape[0],n))
-            L_inv = cholesky(joint_prec)
-            draws = means + L_inv.solve_LDLt(z)
+            if draws:
+                z = np.random.normal(size=(means.shape[0],draws))
+                L_inv = cholesky(csc_matrix(joint_prec))
+                ran_draws = means + L_inv.solve_LDLt(z)
             # save results
+            means = means.reshape(means.shape[0])
+            sds = sds.reshape(sds.shape[0])
             for m in set(joint_names):
                 i = [ii for ii,mm in enumerate(joint_names) if mm == m] # names will be the same for every item in a vector/matrix, so find all corresponding indices
-                self.parameters[m] = {
-                    'mean': means[i],
-                    'sd': sds[i],
-                    'draws': draws[i,]
-                }
-        print('\nSimulated {n} draws in {t:.1f}s.\n'.format(n=n, t=time.time()-start))
+                if draws:
+                    self.parameters[m] = {
+                        'mean': means[i],
+                        'sd': sds[i],
+                        'draws': ran_draws[i,]
+                    }
+                else:
+                    self.parameters[m] = {
+                        'mean': means[i],
+                        'sd': sds[i]
+                    }
+        print('\nSimulated {n} draws in {t:.1f}s.\n'.format(n=draws, t=time.time()-start))
         self.print_parameters()
 
     def print_parameters(self):
@@ -359,5 +370,5 @@ class model:
         '''
         np.set_printoptions(threshold=5, edgeitems=2)
         for p,v in self.parameters.iteritems():
-            print('{p}:\n\tmean\t{m}\n\tsd\t{s}\n\tdraws\t{d}\n\tshape\t{z}'.format(p=p, m=v['mean'], s=v['sd'], d=v['draws'], z=v['draws'].shape))
+            print('{p}:\n\tmean\t{m}\n\tsd\t{s}\n\tdraws\t{d}\n\tshape\t{z}'.format(p=p, m=v['mean'], s=v['sd'], d=v['draws'] if 'draws' in v else None, z=v['draws'].shape))
         np.set_printoptions(threshold=1000, edgeitems=3)
