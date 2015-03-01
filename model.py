@@ -171,7 +171,7 @@ class model:
         with file(self.filepath) as f:
             for l in f:
                 if re.match('^PARAMETER' if thing == 'init' else '^{}'.format(thing.upper()), l.strip()):
-                    i = re.search(r"\(([A-Za-z]+)\)", l.strip()).group(1)
+                    i = re.search(r"\(([A-Za-z0-9_]+)\)", l.strip()).group(1)
                     if i not in getattr(self, thing).keys():
                         missing.append(i)
         if missing:
