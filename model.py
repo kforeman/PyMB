@@ -317,6 +317,7 @@ class model:
         if self.random and random:
             from scikits.sparse.cholmod import cholesky
             from scipy.sparse import csc_matrix
+            from scipy.sparse.linalg import spsolve
             # means
             ran_mean = np.array(get_R_attr(self.sdreport, 'par.random'))
             ran_names = get_R_attr(self.sdreport, 'par.random').names
@@ -343,8 +344,9 @@ class model:
             # draws (http://en.wikipedia.org/wiki/Multivariate_normal_distribution#Drawing_values_from_the_distribution)
             if draws:
                 z = np.random.normal(size=(means.shape[0],draws))
-                L_inv = cholesky(csc_matrix(joint_prec))
-                ran_draws = means + L_inv.solve_LDLt(z)
+                chol_jp = cholesky(csc_matrix(joint_prec))
+                ### note: would typically use scikits.sparse.cholmod.cholesky.solve_Lt, but there seems to be a bug there: https://github.com/njsmith/scikits-sparse/issues/9#issuecomment-76862652
+                ran_draws = means + chol_jp.apply_Pt(spsolve(chol_jp.L().T, z))
             # save results
             means = means.reshape(means.shape[0])
             sds = sds.reshape(sds.shape[0])
