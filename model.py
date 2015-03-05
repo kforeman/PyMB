@@ -215,7 +215,7 @@ class model:
             parameters=self.R.ListVector(self.init), hessian=hessian, **kwargs)
 
 
-    def optimize(self, opt_fun='nlminb', method='L-BFGS-B', draws=100, **kwargs):
+    def optimize(self, opt_fun='nlminb', method='L-BFGS-B', draws=100, verbose=False, **kwargs):
         '''
         Optimize the model and store results in TMB_Model.TMB.fit
 
@@ -227,6 +227,8 @@ class model:
             method to use for optimization
         draws : int or Boolean, default 100
             if Truthy, will automatically simulate draws from the posterior
+        verbose : boolean, default False
+            whether to print detailed optimization state
         **kwargs: additional arguments to be passed to the R optimization function
         '''
         # time function execution
@@ -235,6 +237,16 @@ class model:
         # check to make sure the optimization function has been built
         if not hasattr(self.TMB, 'model'):
             self.build_objective_function()
+
+        # turn off warnings if verbose is not on
+        if not verbose:
+            self.R.r('''
+                function(model) {
+                    model$env$silent <- TRUE
+                    model$env$tracemgc <- FALSE
+                    model$env$inner.control$trace <- FALSE
+                }
+            ''')(self.TMB.model)
 
         # fit the model
         self.TMB.fit = self.R.r[opt_fun](start=get_R_attr(self.TMB.model, 'par'), objective=get_R_attr(self.TMB.model, 'fn'),
