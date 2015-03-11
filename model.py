@@ -406,6 +406,12 @@ class model:
         print('\nSimulated {n} draws in {t:.1f}s.\n'.format(n=draws, t=time.time()-start))
         self.print_parameters()
 
+    def draws(self, parameter):
+        '''
+        Convenience function to return the draws for a specific parameter as a numpy.ndarray
+        '''
+        return self.parameters[parameter]['draws']
+
     def print_parameters(self):
         '''
         Print summary statistics of the model parameter fits
