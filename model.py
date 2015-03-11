@@ -200,7 +200,7 @@ class model:
         if hasattr(self, 'obj_fun_built'):
             try:
                 del model.TMB.model
-                model.R.r('dyn.load("{filepath}")'.format(filepath=self.filepath.replace('.cpp','.so'))
+                model.R.r('dyn.load("{filepath}")'.format(filepath=self.filepath.replace('.cpp','.so')))
 
         # save the names of random effects
         if random or not hasattr(self, 'random'):
