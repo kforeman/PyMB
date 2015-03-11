@@ -334,10 +334,14 @@ class model:
             for m in set(names):
                 i = [ii for ii,mm in enumerate(names) if mm == m] # names will be the same for every item in a vector/matrix, so find all corresponding indices
                 if draws:
+                    if type(self.init[m]) == np.ndarray:
+                        these_draws = fixed_draws[i,].reshape(list(self.init[m].shape) + [draws], order='F')
+                    else:
+                        these_draws = fixed_draws[i,]
                     self.parameters[m] = {
                         'mean': fixed_mean[i],
                         'sd': fixed_sd[i],
-                        'draws': fixed_draws[i,]
+                        'draws': these_draws
                     }
                 else:
                     self.parameters[m] = {
@@ -385,10 +389,14 @@ class model:
             for m in set(joint_names):
                 i = [ii for ii,mm in enumerate(joint_names) if mm == m] # names will be the same for every item in a vector/matrix, so find all corresponding indices
                 if draws:
+                    if type(self.init[m]) == np.ndarray:
+                        these_draws = ran_draws[i,].reshape(list(self.init[m].shape) + [draws], order='F')
+                    else:
+                        these_draws = ran_draws[i,]
                     self.parameters[m] = {
                         'mean': means[i],
                         'sd': sds[i],
-                        'draws': ran_draws[i,]
+                        'draws': these_draws
                     }
                 else:
                     self.parameters[m] = {
