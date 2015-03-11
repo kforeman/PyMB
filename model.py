@@ -422,8 +422,10 @@ class model:
                 d = v['draws']
                 if d.shape[0] == 1:
                     print('{p}:\n\tmean\t{m}\n\tsd\t{s}\n\tdraws\t{d}\n\tshape\t{z}'.format(p=p, m=v['mean'], s=v['sd'], d=d, z=d.shape))
+                elif len(d.shape) == 2:
+                    print('{p}:\n\tmean\t{m}\n\tsd\t{s}\n\tdraws\t{d}\n\tshape\t{z}'.format(p=p, m=v['mean'], s=v['sd'], d='[{0},\n\t\t ...,\n\t\t {1}]'.format(d[0,:], d[d.shape[0]-1,:]), z=d.shape))
                 else:
-                    print('{p}:\n\tmean\t{m}\n\tsd\t{s}\n\tdraws\t{d}\n\tshape\t{z}'.format(p=p, m=v['mean'], s=v['sd'], d='[{0},\n\t\t ...,\n\t\t {1}]'.format(d[0,], d[d.shape[0]-1,]), z=d.shape))
+                    print('{p}:\n\tmean\t{m}\n\tsd\t{s}\n\tdraws\t{d}\n\tshape\t{z}'.format(p=p, m=v['mean'], s=v['sd'], d='[[{0},\n\t\t ...,\n\t\t {1}]]'.format(d[0,0,:], d[d.shape[0]-1,d.shape[1]-1,:]), z=d.shape))
             else:
                 print('{p}:\n\tmean\t{m}\n\tsd\t{s}\n\tdraws\tNone'.format(p=p, m=v['mean'], s=v['sd']))
         np.set_printoptions(threshold=1000, edgeitems=3)
