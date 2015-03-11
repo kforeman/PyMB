@@ -19,7 +19,7 @@ and ease of model specification, but uses either TMB or [PyCppAD](https://github
 ## Example
 A demo [iPython notebook](http://ipython.org/notebook.html) can be found at 
 [Examples/Linear Regression.ipynb](Examples/Linear Regression.ipynb) or an online version can be viewed [here]
-(http://nbviewer.ipython.org/github/kforeman/PyMB/blob/master/Examples/Linear%20Regression.ipynb).
+(http://nbviewer.ipython.org/github/kforeman/PyMB/blob/master/Examples/Linear%20Regression%20-%20Magic.ipynb).
 
 ## Installation
 #### Dependencies
