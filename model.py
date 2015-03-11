@@ -150,13 +150,11 @@ class model:
         if self.name in [str(get_R_attr(i, 'name')[0]) for i in self.R.r('getLoadedDLLs()')]:
             warnings.warn('A model has already been loaded into TMB. Restarting R and reloading model to prevent conflicts.')
             del self.R
-            del ro
             from rpy2 import robjects as ro
             self.R = ro
             del self.TMB
             from rpy2.robjects.packages import importr
             self.TMB = importr('TMB')
-
 
         # load the model into R
         self.R.r('dyn.load("{output_dir}/{name}.so")'.format(output_dir=output_dir, name=self.name))
@@ -198,6 +196,14 @@ class model:
         self.check_inputs('data')
         self.check_inputs('init')
 
+        # reload the model if it's already been built
+        if hasattr(self, 'obj_fun_built'):
+            try:
+                del self.TMB.model
+                self.R.r('dyn.load("{filepath}")'.format(filepath=self.filepath.replace('.cpp','.so')))
+            except:
+                pass
+
         # save the names of random effects
         if random or not hasattr(self, 'random'):
             random.sort()
@@ -214,8 +220,11 @@ class model:
         self.TMB.model = self.TMB.MakeADFun(data=self.R.ListVector(self.data),
             parameters=self.R.ListVector(self.init), hessian=hessian, **kwargs)
 
+        # set obj_fun_built
+        self.obj_fun_built = True
 
-    def optimize(self, opt_fun='nlminb', method='L-BFGS-B', draws=100, verbose=False, **kwargs):
+
+    def optimize(self, opt_fun='nlminb', method='L-BFGS-B', draws=100, verbose=False, random=None, **kwargs):
         '''
         Optimize the model and store results in TMB_Model.TMB.fit
 
@@ -229,14 +238,25 @@ class model:
             if Truthy, will automatically simulate draws from the posterior
         verbose : boolean, default False
             whether to print detailed optimization state
+        random: list, default []
+            passed to PyMB.build_objective_function
+            which parameters should be treated as random effects (and thus integrated out of the likelihood function)
+            can also be added manually via e.g. myModel.random = ['a','b']
         **kwargs: additional arguments to be passed to the R optimization function
         '''
         # time function execution
         start = time.time()
 
+        # rebuild optimization function if new random parameters are given
+        rebuild = False
+        if random is not None:
+            if not hasattr(self, 'random') or random != self.random:
+                self.random = random
+                rebuild = True
+
         # check to make sure the optimization function has been built
-        if not hasattr(self.TMB, 'model'):
-            self.build_objective_function()
+        if not hasattr(self.TMB, 'model') or rebuild:
+            self.build_objective_function(random=self.random)
 
         # turn off warnings if verbose is not on
         if not verbose:
