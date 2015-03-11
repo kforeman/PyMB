@@ -201,6 +201,8 @@ class model:
             try:
                 del model.TMB.model
                 model.R.r('dyn.load("{filepath}")'.format(filepath=self.filepath.replace('.cpp','.so')))
+            except:
+                pass
 
         # save the names of random effects
         if random or not hasattr(self, 'random'):
