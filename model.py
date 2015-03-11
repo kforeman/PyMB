@@ -199,8 +199,8 @@ class model:
         # reload the model if it's already been built
         if hasattr(self, 'obj_fun_built'):
             try:
-                del model.TMB.model
-                model.R.r('dyn.load("{filepath}")'.format(filepath=self.filepath.replace('.cpp','.so')))
+                del self.TMB.model
+                self.R.r('dyn.load("{filepath}")'.format(filepath=self.filepath.replace('.cpp','.so')))
             except:
                 pass
 
@@ -224,7 +224,7 @@ class model:
         self.obj_fun_built = True
 
 
-    def optimize(self, opt_fun='nlminb', method='L-BFGS-B', draws=100, verbose=False, **kwargs):
+    def optimize(self, opt_fun='nlminb', method='L-BFGS-B', draws=100, verbose=False, random=None, **kwargs):
         '''
         Optimize the model and store results in TMB_Model.TMB.fit
 
@@ -238,14 +238,24 @@ class model:
             if Truthy, will automatically simulate draws from the posterior
         verbose : boolean, default False
             whether to print detailed optimization state
+        random: list, default []
+            passed to PyMB.build_objective_function
+            which parameters should be treated as random effects (and thus integrated out of the likelihood function)
+            can also be added manually via e.g. myModel.random = ['a','b']
         **kwargs: additional arguments to be passed to the R optimization function
         '''
         # time function execution
         start = time.time()
 
+        # rebuild optimization function if new random parameters are given
+        if random is not None:
+            if not hasattr(self, 'random') or random != self.random:
+                self.random = random
+                self.build_objective_function(random=random)
+
         # check to make sure the optimization function has been built
         if not hasattr(self.TMB, 'model'):
-            self.build_objective_function()
+            self.build_objective_function(random=random)
 
         # turn off warnings if verbose is not on
         if not verbose:
