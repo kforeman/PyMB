@@ -150,13 +150,11 @@ class model:
         if self.name in [str(get_R_attr(i, 'name')[0]) for i in self.R.r('getLoadedDLLs()')]:
             warnings.warn('A model has already been loaded into TMB. Restarting R and reloading model to prevent conflicts.')
             del self.R
-            del ro
             from rpy2 import robjects as ro
             self.R = ro
             del self.TMB
             from rpy2.robjects.packages import importr
             self.TMB = importr('TMB')
-
 
         # load the model into R
         self.R.r('dyn.load("{output_dir}/{name}.so")'.format(output_dir=output_dir, name=self.name))
@@ -198,6 +196,12 @@ class model:
         self.check_inputs('data')
         self.check_inputs('init')
 
+        # reload the model if it's already been built
+        if hasattr(self, 'obj_fun_built'):
+            try:
+                del model.TMB.model
+                model.R.r('dyn.load("{filepath}")'.format(filepath=self.filepath.replace('.cpp','.so'))
+
         # save the names of random effects
         if random or not hasattr(self, 'random'):
             random.sort()
@@ -213,6 +217,9 @@ class model:
         # build the objective function
         self.TMB.model = self.TMB.MakeADFun(data=self.R.ListVector(self.data),
             parameters=self.R.ListVector(self.init), hessian=hessian, **kwargs)
+
+        # set obj_fun_built
+        self.obj_fun_built = True
 
 
     def optimize(self, opt_fun='nlminb', method='L-BFGS-B', draws=100, verbose=False, **kwargs):
