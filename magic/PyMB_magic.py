@@ -1,7 +1,7 @@
 def import_pymb_magic():
     # so many imports
     from IPython.core.magic import (magics_class, Magics, cell_magic, line_magic, MagicsManager)
-    from IPython.core.magic_arguments import (argument, kwds, magic_arguments, parse_argstring)
+    from IPython.core.magic_arguments import (argument, kwds, defaults, magic_arguments, parse_argstring)
     from IPython.core.display import display_javascript
     import PyMB
 
@@ -27,6 +27,11 @@ def import_pymb_magic():
         @magic_arguments()
         @argument('name', type=str,
                   help='The model name. A new model object will be created using this name.')
+        @argument('-NO_WRAP', '--NO_WRAP_OBJ_FUN', dest='WRAP', action='store_false',
+                  help='Turn off automatic wrapping of cell in objective function.')
+        @argument('-WRAP', '--WRAP_OBJ_FUN', dest='WRAP', action='store_true',
+                  help='Wrap the contents of the cell in an objective function.')
+        @defaults(WRAP=True)
         @argument('-TMB', '--TMB_DIR', type=str, default='/usr/local/lib/R/site-library/TMB/include',
                   help='''TMB_DIR : str, default '/usr/local/lib/R/site-library/TMB/include'
                         location of TMB library''')
@@ -73,17 +78,17 @@ def import_pymb_magic():
             for u in args.USING:
                 code += 'using {};\n'.format(u)
 
-            # add template
-            code += 'template<class Type>\n'
-
-            # start objective function
-            code += '\nType objective_function<Type>::operator() () {\n'
+            # wrap cell in objective function by default
+            if args.WRAP:
+                code += 'template<class Type>\n'
+                code += 'Type objective_function<Type>::operator() () {\n'
 
             # add cell contents (with tab indenting to make it look nicer)
             code += '\n'.join(['    ' + c for c in cell.split('\n')]) + '\n'
 
             # close objective function
-            code += '}\n'
+            if args.WRAP:
+                code += '}\n'
 
             # compile model
             model.compile(codestr=code, output_dir=args.OUTPUT_DIR, cc=args.CCOMPILER, R=args.R_DIR, TMB=args.TMB_DIR)
