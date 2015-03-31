@@ -52,9 +52,13 @@ def import_pymb_magic():
         @argument('-U', '--USING', type=list, default=['namespace density'],
                   help='''USING: list, default ['namespace density']
                         namespaces, libraries, etc to include, e.g. Eigen::SparseMatrix''')
-        @argument('-V', '--VERBOSE', type=bool, default=False,
+        @argument('-V', '--VERBOSE', dest='VERBOSE', action='store_true',
                   help='''VERBOSE: boolean, default False
-                          prints model code to be compiled''')
+                          prints model code and compiler warnings''')
+        @argument('-Q', '--QUIET', dest='VERBOSE', action='store_false',
+                  help='''QUIET: boolean, default True
+                          silences compiler output (opposite of verbose)''')
+        @defaults(VERBOSE=False)
         @cell_magic
         def PyMB(self, line, cell):
             # parse arguments
@@ -91,7 +95,7 @@ def import_pymb_magic():
                 code += '}\n'
 
             # compile model
-            model.compile(codestr=code, output_dir=args.OUTPUT_DIR, cc=args.CCOMPILER, R=args.R_DIR, TMB=args.TMB_DIR)
+            model.compile(codestr=code, output_dir=args.OUTPUT_DIR, cc=args.CCOMPILER, R=args.R_DIR, TMB=args.TMB_DIR, verbose=args.VERBOSE)
 
             # print if verbose
             if args.VERBOSE == True:

@@ -59,7 +59,7 @@ class model:
 
     def compile(self, filepath=None, codestr=None, output_dir='tmb_tmp',
         cc='g++', R='/usr/share/R/include',
-        TMB='/usr/local/lib/R/site-library/TMB/include'):
+        TMB='/usr/local/lib/R/site-library/TMB/include', verbose=False):
         '''
         Compile TMB C++ code and load into R
 
@@ -79,6 +79,8 @@ class model:
                   See http://stackoverflow.com/a/13224980/1028347
         TMB : str, default '/usr/local/lib/R/site-library/TMB/include'
             location of TMB library
+        verbose: boolean, default False
+            print compiler warnings
         '''
         # time compilation
         start = time.time()
@@ -126,6 +128,9 @@ class model:
             print(comp)
             print(exc.output)
             raise Exception('Your TMB code could not compile. See error above.')
+        if verbose:
+            print(comp)
+            print(cmnd_output)
         # create shared object
         link = '{cc} {options} -o {so} {o} {link}'.format(
             cc=cc,
