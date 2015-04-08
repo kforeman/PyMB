@@ -59,7 +59,7 @@ class model:
 
     def compile(self, filepath=None, codestr=None, output_dir='tmb_tmp',
         cc='g++', R='/usr/share/R/include',
-        TMB='/usr/local/lib/R/site-library/TMB/include', verbose=False):
+        TMB='/usr/local/lib/R/site-library/TMB/include', LR='/usr/lib/R/lib', verbose=False):
         '''
         Compile TMB C++ code and load into R
 
@@ -137,7 +137,7 @@ class model:
             options='-shared',
             so='{output_dir}/{name}.so'.format(output_dir=output_dir, name=self.name),
             o='{output_dir}/{name}.o'.format(output_dir=output_dir, name=self.name),
-            link='-L/usr/lib/R/lib -lR')
+            link='-L{LR} -lR'.format(LR=LR))
         try:
             cmnd_output = subprocess.check_output(link, stderr=subprocess.STDOUT, shell=True)
         except subprocess.CalledProcessError as exc:
