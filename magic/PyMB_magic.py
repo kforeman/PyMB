@@ -40,6 +40,11 @@ def import_pymb_magic():
                         location of R shared library
                         Note: R must be built with shared libraries
                         See http://stackoverflow.com/a/13224980/1028347''')
+        @argument('-LR', '--R_LIB', type=str, default='/usr/share/R/include',
+                  help='''R_LIB : str, default '/usr/lib/R/lib'
+                        location of R library
+                        Note: R must be built with shared libraries
+                        See http://stackoverflow.com/a/13224980/1028347''')
         @argument('-CC', '--CCOMPILER', type=str, default='g++',
                   help='''CCOMPILER : str, default 'g++'
                         C++ compiler to use''')
@@ -95,7 +100,7 @@ def import_pymb_magic():
                 code += '}\n'
 
             # compile model
-            model.compile(codestr=code, output_dir=args.OUTPUT_DIR, cc=args.CCOMPILER, R=args.R_DIR, TMB=args.TMB_DIR, verbose=args.VERBOSE)
+            model.compile(codestr=code, output_dir=args.OUTPUT_DIR, cc=args.CCOMPILER, R=args.R_DIR, TMB=args.TMB_DIR, LR=args.R_LIB, verbose=args.VERBOSE)
 
             # print if verbose
             if args.VERBOSE == True:
