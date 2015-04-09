@@ -229,7 +229,7 @@ class model:
         self.obj_fun_built = True
 
 
-    def optimize(self, opt_fun='nlminb', method='L-BFGS-B', draws=100, verbose=False, random=None, **kwargs):
+    def optimize(self, opt_fun='nlminb', method='L-BFGS-B', draws=100, verbose=False, random=None, quiet=False, noparams=False, **kwargs):
         '''
         Optimize the model and store results in TMB_Model.TMB.fit
 
@@ -247,6 +247,8 @@ class model:
             passed to PyMB.build_objective_function
             which parameters should be treated as random effects (and thus integrated out of the likelihood function)
             can also be added manually via e.g. myModel.random = ['a','b']
+        noparams: boolean, default False
+            if True, will skip finding the means of the parameters entirely
         **kwargs: additional arguments to be passed to the R optimization function
         '''
         # time function execution
@@ -276,11 +278,14 @@ class model:
         # fit the model
         self.TMB.fit = self.R.r[opt_fun](start=get_R_attr(self.TMB.model, 'par'), objective=get_R_attr(self.TMB.model, 'fn'),
             gradient=get_R_attr(self.TMB.model, 'gr'), method=method, **kwargs)
-        print('\nModel optimization complete in {:.1f}s.\n'.format(time.time()-start))
+        if not quiet:
+            print('\nModel optimization complete in {:.1f}s.\n'.format(time.time()-start))
 
         # simulate parameters
-        print('\n{}\n'.format(''.join(['-' for i in range(80)])))
-        self.simulate_parameters(draws=draws)
+        if not quiet:
+            print('\n{}\n'.format(''.join(['-' for i in range(80)])))
+        if not noparams:
+            self.simulate_parameters(draws=draws, quiet=quiet)
 
     def report(self, name):
         '''
@@ -293,7 +298,7 @@ class model:
         '''
         return np.array(get_R_attr(get_R_attr(self.TMB.model, 'report')(), name))
 
-    def simulate_parameters(self, draws=100, random=True, fixed=False):
+    def simulate_parameters(self, draws=100, random=True, fixed=False, quiet=False):
         '''
         Simulate draws from the posterior variance/covariance matrix of the fixed and random effects
 
@@ -408,8 +413,9 @@ class model:
                         'mean': means[i],
                         'sd': sds[i]
                     }
-        print('\nSimulated {n} draws in {t:.1f}s.\n'.format(n=draws, t=time.time()-start))
-        self.print_parameters()
+        if not quiet:
+            print('\nSimulated {n} draws in {t:.1f}s.\n'.format(n=draws, t=time.time()-start))
+            self.print_parameters()
 
     def draws(self, parameter):
         '''
