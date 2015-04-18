@@ -91,9 +91,11 @@ class model:
         if not filepath and not codestr:
             raise Exception('No filepath or codestr found.')
 
-        # if given just a filepath, simply store the path
+        # if given just a filepath, copy the code into the output directory
         if filepath:
-            self.filepath = filepath
+            import os, shutil
+            self.filepath = os.path.join(output_dir, '{name}.cpp'.format(name=self.name))
+            shutil.copy(filepath, self.filepath)
             if codestr:
                 warnings.warn('Both filepath and codestr specified. Ignoring codestr.')
 
