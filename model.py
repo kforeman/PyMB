@@ -91,19 +91,21 @@ class model:
         if not filepath and not codestr:
             raise Exception('No filepath or codestr found.')
 
+        # make the output directory if it doesn't already exist
+        import os
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
         # if given just a filepath, copy the code into the output directory
         if filepath:
-            import os, shutil
             self.filepath = os.path.join(output_dir, '{name}.cpp'.format(name=self.name))
+            import shutil
             shutil.copy(filepath, self.filepath)
             if codestr:
                 warnings.warn('Both filepath and codestr specified. Ignoring codestr.')
 
         # otherwise write code to file
         elif codestr:
-            import os
-            if not os.path.exists(output_dir):
-                os.makedirs(output_dir)
             self.filepath = '{output_dir}/{name}.cpp'.format(output_dir=output_dir, name=self.name)
 
             # only rewrite cpp if identical code found
