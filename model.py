@@ -59,7 +59,7 @@ class model:
 
     def compile(self, filepath=None, codestr=None, output_dir='tmb_tmp',
         cc='g++', R='/usr/share/R/include',
-        TMB='/usr/local/lib/R/site-library/TMB/include', LR='/usr/lib/R/lib', verbose=False):
+        TMB='/usr/local/lib/R/site-library/TMB/include', LR='/usr/lib/R/lib', verbose=False, load=True):
         '''
         Compile TMB C++ code and load into R
 
@@ -79,8 +79,10 @@ class model:
                   See http://stackoverflow.com/a/13224980/1028347
         TMB : str, default '/usr/local/lib/R/site-library/TMB/include'
             location of TMB library
-        verbose: boolean, default False
+        verbose : boolean, default False
             print compiler warnings
+        load : boolean, default True
+            load the model into Python after compilation
         '''
         # time compilation
         start = time.time()
@@ -154,6 +156,7 @@ class model:
         """
         if self.name in [str(get_R_attr(i, 'name')[0]) for i in self.R.r('getLoadedDLLs()')]:
             warnings.warn('A model has already been loaded into TMB. Restarting R and reloading model to prevent conflicts.')
+            self.R.r('try(dyn.unload("{output_dir}/{name}.so"), silent=TRUE)'.format(output_dir=output_dir, name=self.name))
             del self.R
             from rpy2 import robjects as ro
             self.R = ro
@@ -162,11 +165,20 @@ class model:
             self.TMB = importr('TMB')
 
         # load the model into R
-        self.R.r('dyn.load("{output_dir}/{name}.so")'.format(output_dir=output_dir, name=self.name))
-        self.model_loaded = True
+        if load:
+            self.load_model(so_file='{output_dir}/{name}.so'.format(output_dir=output_dir, name=self.name))
 
         # output time
         print('Compiled in {:.1f}s.\n'.format(time.time()-start))
+
+    def load_model(self, so_file=''):
+        if so_file == '':
+            so_file = 'tmb_tmp/{name}.so'.format(name=self.name)
+        if not hasattr(self, 'filepath'):
+            # assume that the cpp file is in the same directory with the same name if it wasn't specified
+            self.filepath = so_file.replace('.so','.cpp')
+        self.R.r('dyn.load("{so_file}")'.format(so_file=so_file))
+        self.model_loaded = True
 
     def check_inputs(self, thing):
         import re
