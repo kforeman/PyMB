@@ -183,7 +183,9 @@ class model:
         if not hasattr(self, 'filepath'):
             # assume that the cpp file is in the same directory with the same name if it wasn't specified
             self.filepath = so_file.replace('.so','.cpp')
+        self.R.r('sink("/dev/null")')
         self.R.r('dyn.load("{so_file}")'.format(so_file=so_file))
+        self.R.r('sink()')
         self.model_loaded = True
 
     def check_inputs(self, thing):
@@ -294,9 +296,13 @@ class model:
             ''')(self.TMB.model)
 
         # fit the model
+        if quiet:
+            self.R.r('sink("/dev/null")')
         self.TMB.fit = self.R.r[opt_fun](start=get_R_attr(self.TMB.model, 'par'), objective=get_R_attr(self.TMB.model, 'fn'),
             gradient=get_R_attr(self.TMB.model, 'gr'), method=method, **kwargs)
-        if not quiet:
+        if quiet:
+            self.R.r('sink()')
+        else:
             print('\nModel optimization complete in {:.1f}s.\n'.format(time.time()-start))
 
         # simulate parameters
