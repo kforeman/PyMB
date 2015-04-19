@@ -160,7 +160,9 @@ class model:
         """
         if self.name in [str(get_R_attr(i, 'name')[0]) for i in self.R.r('getLoadedDLLs()')]:
             warnings.warn('A model has already been loaded into TMB. Restarting R and reloading model to prevent conflicts.')
+            self.R.r('sink("/dev/null")')
             self.R.r('try(dyn.unload("{output_dir}/{name}.so"), silent=TRUE)'.format(output_dir=output_dir, name=self.name))
+            self.R.r('sink()')
             del self.R
             from rpy2 import robjects as ro
             self.R = ro
