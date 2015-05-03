@@ -245,7 +245,7 @@ class model:
         self.obj_fun_built = True
 
 
-    def optimize(self, opt_fun='nlminb', method='L-BFGS-B', draws=100, verbose=False, random=None, quiet=False, noparams=False, **kwargs):
+    def optimize(self, opt_fun='nlminb', method='L-BFGS-B', draws=100, verbose=False, random=None, fixed=True, quiet=False, noparams=False, **kwargs):
         '''
         Optimize the model and store results in TMB_Model.TMB.fit
 
@@ -259,13 +259,15 @@ class model:
             if Truthy, will automatically simulate draws from the posterior
         verbose : boolean, default False
             whether to print detailed optimization state
-        random: list, default []
+        random : list, default []
             passed to PyMB.build_objective_function
             which parameters should be treated as random effects (and thus integrated out of the likelihood function)
             can also be added manually via e.g. myModel.random = ['a','b']
-        noparams: boolean, default False
+        fixed : boolean, default True
+            whether to calculate parameter values for fixed effects 
+        noparams : boolean, default False
             if True, will skip finding the means of the parameters entirely
-        **kwargs: additional arguments to be passed to the R optimization function
+        **kwargs : additional arguments to be passed to the R optimization function
         '''
         # time function execution
         start = time.time()
@@ -301,7 +303,7 @@ class model:
         if not quiet:
             print('\n{}\n'.format(''.join(['-' for i in range(80)])))
         if not noparams:
-            self.simulate_parameters(draws=draws, quiet=quiet)
+            self.simulate_parameters(draws=draws, quiet=quiet, fixed=fixed)
 
     def report(self, name):
         '''
@@ -314,7 +316,7 @@ class model:
         '''
         return np.array(get_R_attr(get_R_attr(self.TMB.model, 'report')(), name))
 
-    def simulate_parameters(self, draws=100, random=True, fixed=False, quiet=False):
+    def simulate_parameters(self, draws=100, random=True, fixed=True, quiet=False):
         '''
         Simulate draws from the posterior variance/covariance matrix of the fixed and random effects
 
@@ -326,7 +328,7 @@ class model:
             if Truthy, number of correlated draws to simulate from the posterior
         random : boolean, default True
             whether to simulate random effects
-        fixed : boolean, default False
+        fixed : boolean, default True
             whether to simulate fixed effects
         '''
         # time function
@@ -345,16 +347,13 @@ class model:
         if self.fixed and fixed:
             # means
             fixed_mean = np.array(get_R_attr(self.sdreport, 'par.fixed'))
-            # precision matrix (note: for fixed effects, the var/cov matrix is returned so must invert it)
+            # variance covariance matrix
             fixed_vcov = np.array(get_R_attr(self.sdreport, 'cov.fixed'))
-            fixed_prec = np.linalg.inv(fixed_vcov)
             # sd
             fixed_sd = np.sqrt(np.diag(fixed_vcov))
-            # draws (http://en.wikipedia.org/wiki/Multivariate_normal_distribution#Drawing_values_from_the_distribution)
+            # draws
             if draws:
-                z = np.random.normal(size=(fixed_mean.shape[0],draws))
-                L_inv = np.linalg.cholesky(fixed_prec)
-                fixed_draws = fixed_mean.reshape((fixed_mean.shape[0], 1)) + np.linalg.solve(L_inv, np.linalg.solve(L_inv.T, z))
+                fixed_draws = np.random.multivariate_normal(fixed_mean, fixed_vcov, draws).T
             # save results
             names = get_R_attr(self.sdreport, 'par.fixed').names
             for m in set(names):
