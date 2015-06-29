@@ -268,7 +268,7 @@ class model:
             which parameters should be treated as random effects (and thus integrated out of the likelihood function)
             can also be added manually via e.g. myModel.random = ['a','b']
         fixed : boolean, default True
-            whether to calculate parameter values for fixed effects 
+            whether to calculate parameter values for fixed effects
         noparams : boolean, default False
             if True, will skip finding the means of the parameters entirely
         **kwargs : additional arguments to be passed to the R optimization function
@@ -324,23 +324,28 @@ class model:
         '''
         return np.array(get_R_attr(get_R_attr(self.TMB.model, 'report')(), name))
 
-    def simulate_parameters(self, draws=100, random=True, fixed=True, quiet=False):
+    def simulate_parameters(self, draws=100, params=[], quiet=False):
         '''
         Simulate draws from the posterior variance/covariance matrix of the fixed and random effects
 
-        Stores draws in TMB_Model.parameters dictionary
+        Stores draws in Model.parameters dictionary
 
         Parameters
         ----------
         draws : int or boolean, default 1000
             if Truthy, number of correlated draws to simulate from the posterior
-        random : boolean, default True
-            whether to simulate random effects
-        fixed : boolean, default True
-            whether to simulate fixed effects
+        params : list of strings, default []
+            which parameters to simulate, defaults to [] which means all parameters
+            list parameters by name to extract their posteriors from the model
+        quiet : boolean, default False
+            set to True in order to suppress outputting parameter summaries
         '''
         # time function
         start = time.time()
+
+        # use all parameters if none specified
+        if len(params) == 0:
+            params = self.fixed + self.random
 
         # start storing parameters
         self.parameters = {}
@@ -351,91 +356,106 @@ class model:
         else:
             self.sdreport = self.TMB.sdreport(self.TMB.model, getJointPrecision=True)
 
-        # fixed effects only models
-        if self.fixed and fixed:
-            # means
-            fixed_mean = np.array(get_R_attr(self.sdreport, 'par.fixed'))
-            # variance covariance matrix
-            fixed_vcov = np.array(get_R_attr(self.sdreport, 'cov.fixed'))
-            # sd
-            fixed_sd = np.sqrt(np.diag(fixed_vcov))
-            # draws
-            if draws:
-                fixed_draws = np.random.multivariate_normal(fixed_mean, fixed_vcov, draws).T
-            # save results
-            names = get_R_attr(self.sdreport, 'par.fixed').names
-            for m in set(names):
-                i = [ii for ii,mm in enumerate(names) if mm == m] # names will be the same for every item in a vector/matrix, so find all corresponding indices
-                if draws:
-                    if type(self.init[m]) == np.ndarray:
-                        these_draws = fixed_draws[i,].reshape(list(self.init[m].shape) + [draws], order='F')
-                    else:
-                        these_draws = fixed_draws[i,]
-                    self.parameters[m] = {
-                        'mean': fixed_mean[i],
-                        'sd': fixed_sd[i],
-                        'draws': these_draws
-                    }
-                else:
-                    self.parameters[m] = {
-                        'mean': fixed_mean[i],
-                        'sd': fixed_sd[i]
-                    }
+        # extraction convenience function
+        # filters the object down to just a list of desired parameters
+        extract_params = self.R.r('''function(obj, nm, keepers) {
+            ii <- nm %in% keepers;
+            if (is.vector(obj)) {
+                return(obj[ii]);
+            } else {
+                return(obj[ii,ii]);
+            };
+        }''')
 
-        # random effects models
-        if self.random and random:
-            from scikits.sparse.cholmod import cholesky
-            from scipy.sparse import csc_matrix
-            from scipy.sparse.linalg import spsolve
-            # means
-            ran_mean = np.array(get_R_attr(self.sdreport, 'par.random'))
-            ran_names = get_R_attr(self.sdreport, 'par.random').names
-            # sd
-            ran_sd = np.sqrt(np.array(get_R_attr(self.sdreport, 'diag.cov.random')))
+        # extract the joint precision matrix
+        joint_prec_full = get_R_attr(self.sdreport, 'jointPrecision')
+        joint_prec_names = self.R.r('row.names')(joint_prec_full)
+        joint_prec = extract_params(joint_prec_full, joint_prec_names, params)
+
+        # make a list of all the parameters, ordered by position in the joint precision matrix
+        ordered_params = np.array(self.R.r('row.names')(joint_prec))
+
+        ### extract fixed effects
+        # means
+        fixed_mean_raw = get_R_attr(self.sdreport, 'par.fixed')
+        # sds
+        fixed_sd_raw = get_R_attr(self.sdreport, 'cov.fixed')
+        # names
+        fixed_names = fixed_mean_raw.names
+        # keep just selected
+        fixed_mean = extract_params(fixed_mean_raw, fixed_names, params)
+        fixed_sd = extract_params(self.R.r('sqrt')(fixed_sd_raw), fixed_names, params)
+
+        ### extract random effects
+        # means
+        ran_mean_raw = get_R_attr(self.sdreport, 'par.random')
+        # sds
+        ran_sd_raw = get_R_attr(self.sdreport, 'diag.cov.random')
+        # names
+        ran_names = ran_mean_raw.names
+        # keep just selected
+        ran_mean = extract_params(ran_mean_raw, ran_names,  params)
+        ran_sd = extract_params(self.R.r('sqrt')(ran_sd_raw), ran_names, params)
+
+        ### put the means/sds in the right order
+        ## the reason being that the joint precision matrix is based on order of model specification, ignoring random vs fixed
+        # initialize R vectors
+        means = self.R.FloatVector([self.R.NA_Real for i in xrange(len(ordered_params))])
+        sds = self.R.FloatVector([self.R.NA_Real for i in xrange(len(ordered_params))])
+        # loop through and add the parameters to the means/sds in the correct order
+        for p in set(ordered_params):
+            # index in joint precision matrix
+            i_joint = [ii for ii,pp in enumerate(ordered_params) if pp == p]
+            # index in random effects
+            i_ran = [ii for ii,pp in enumerate(ran_names) if pp == p]
+            # index in fixed effects
+            i_fixed = [ii for ii,pp in enumerate(fixed_names) if pp == p]
+            # copy into the appropriate position
+            if i_ran:
+                means[i_joint[0]:i_joint[-1]+1] = ran_mean[i_ran[0]:i_ran[-1]+1]
+                sds[i_joint[0]:i_joint[-1]+1] = ran_sd[i_ran[0]:i_ran[-1]+1]
+            elif i_fixed:
+                means[i_joint[0]:i_joint[-1]+1] = fixed_mean[i_fixed[0]:i_fixed[-1]+1]
+                sds[i_joint[0]:i_joint[-1]+1] = fixed_sd[i_fixed[0]:i_fixed[-1]+1]
+
+        ### generate draws
+        ## simulation function
+        # see http://en.wikipedia.org/wiki/Multivariate_normal_distribution#Drawing_values_from_the_distribution
+        # note: do this in R (not Python) in order to prevent having to convert the precision matrix to dense
+        gen_draws = self.R.r('''function(mu, prec, n.sims) {
+          z = matrix(rnorm(length(mu) * n.sims), ncol=n.sims);
+          L_inv = Cholesky(prec);
+          draws = mu + solve(as(L_inv, "pMatrix"), solve(t(as(L_inv, "Matrix")), z));
+          return(as.matrix(draws));
+        }''')
+        # make draws and copy into a python array
+        if draws:
+            param_draws = np.array(gen_draws(means, joint_prec, draws))
+
+        ### store results
+        # convert mean/sd to python
+        means = np.array(means)
+        sds = np.array(sds)
+        # add parameters' mean, sd, and optionally draws to the parameters dictionary
+        for p in set(ordered_params):
+            i = [ii for ii,pp in enumerate(ordered_params) if pp == p] # names will be the same for every item in a vector/matrix, so find all corresponding indices
             if draws:
-                # joint precision matrix
-                joint_prec_full = get_R_attr(self.sdreport, 'jointPrecision')
-                # keep only random effects from joint precision matrix
-                joint_prec = self.R.r('function(mat, ran) { ii <- rownames(mat) %in% ran; return(as.matrix(mat[ii,ii])) }')(joint_prec_full, self.random)
-                # find names of parameters on joint precision matrix
-                joint_names = self.R.r['row.names'](joint_prec)
-            # sort means appropriately
-            if not draws:
-                joint_names = ran_names
-            means = np.empty(shape=(len(joint_names),1))
-            sds = np.empty(shape=(len(joint_names),1))
-            for m in set(joint_names):
-                # index in joint
-                i_joint = [ii for ii,mm in enumerate(joint_names) if mm == m]
-                i_ran = [ii for ii,mm in enumerate(ran_names) if mm == m]
-                means[i_joint] = ran_mean[i_ran].reshape([len(i_joint),1])
-                sds[i_joint] = ran_sd[i_ran].reshape([len(i_joint),1])
-            # draws (http://en.wikipedia.org/wiki/Multivariate_normal_distribution#Drawing_values_from_the_distribution)
-            if draws:
-                z = np.random.normal(size=(means.shape[0],draws))
-                chol_jp = cholesky(csc_matrix(joint_prec))
-                ### note: would typically use scikits.sparse.cholmod.cholesky.solve_Lt, but there seems to be a bug there: https://github.com/njsmith/scikits-sparse/issues/9#issuecomment-76862652
-                ran_draws = means + chol_jp.apply_Pt(spsolve(chol_jp.L().T, z))
-            # save results
-            means = means.reshape(means.shape[0])
-            sds = sds.reshape(sds.shape[0])
-            for m in set(joint_names):
-                i = [ii for ii,mm in enumerate(joint_names) if mm == m] # names will be the same for every item in a vector/matrix, so find all corresponding indices
-                if draws:
-                    if type(self.init[m]) == np.ndarray:
-                        these_draws = ran_draws[i,].reshape(list(self.init[m].shape) + [draws], order='F')
-                    else:
-                        these_draws = ran_draws[i,]
-                    self.parameters[m] = {
-                        'mean': means[i],
-                        'sd': sds[i],
-                        'draws': these_draws
-                    }
+                if type(self.init[p]) == np.ndarray:
+                    these_draws = param_draws[i,].reshape(list(self.init[p].shape) + [draws], order='F')
                 else:
-                    self.parameters[m] = {
-                        'mean': means[i],
-                        'sd': sds[i]
-                    }
+                    these_draws = param_draws[i,]
+                self.parameters[p] = {
+                    'mean': means[i],
+                    'sd': sds[i],
+                    'draws': these_draws
+                }
+            else:
+                self.parameters[p] = {
+                    'mean': means[i],
+                    'sd': sds[i]
+                }
+
+        ### print results
         if not quiet:
             print('\nSimulated {n} draws in {t:.1f}s.\n'.format(n=draws, t=time.time()-start))
             self.print_parameters()
