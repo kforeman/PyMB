@@ -249,7 +249,7 @@ class model:
         self.obj_fun_built = True
 
 
-    def optimize(self, opt_fun='nlminb', method='L-BFGS-B', draws=100, verbose=False, random=None, fixed=True, quiet=False, noparams=False, **kwargs):
+    def optimize(self, opt_fun='nlminb', method='L-BFGS-B', draws=100, verbose=False, random=None, quiet=False, params=[], noparams=False, **kwargs):
         '''
         Optimize the model and store results in TMB_Model.TMB.fit
 
@@ -267,8 +267,9 @@ class model:
             passed to PyMB.build_objective_function
             which parameters should be treated as random effects (and thus integrated out of the likelihood function)
             can also be added manually via e.g. myModel.random = ['a','b']
-        fixed : boolean, default True
-            whether to calculate parameter values for fixed effects
+        params : list of strings, default []
+            which parameters to simulate, defaults to [] which means all parameters
+            list parameters by name to extract their posteriors from the model
         noparams : boolean, default False
             if True, will skip finding the means of the parameters entirely
         **kwargs : additional arguments to be passed to the R optimization function
@@ -311,7 +312,7 @@ class model:
         if not quiet:
             print('\n{}\n'.format(''.join(['-' for i in range(80)])))
         if not noparams:
-            self.simulate_parameters(draws=draws, quiet=quiet, fixed=fixed)
+            self.simulate_parameters(draws=draws, quiet=quiet, params=params)
 
     def report(self, name):
         '''
