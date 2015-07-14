@@ -269,7 +269,7 @@ class model:
             which parameters should be treated as random effects (and thus integrated out of the likelihood function)
             can also be added manually via e.g. myModel.random = ['a','b']
         fixed : boolean, default True
-            whether to calculate parameter values for fixed effects 
+            whether to calculate parameter values for fixed effects
         noparams : boolean, default False
             if True, will skip finding the means of the parameters entirely
         **kwargs : additional arguments to be passed to the R optimization function
