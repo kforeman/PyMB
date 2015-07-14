@@ -1,6 +1,7 @@
 import numpy as np
 import time
 import warnings
+import readline
 
 def get_R_attr(obj, attr):
     '''
