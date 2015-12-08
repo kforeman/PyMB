@@ -49,6 +49,7 @@ class model:
         # create TMB link
         from rpy2.robjects.packages import importr
         self.TMB = importr('TMB')
+        importr('Matrix')
 
         # create lists of data and initial parameter values for this model
         self.data = {}
