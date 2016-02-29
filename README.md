@@ -14,7 +14,7 @@ TMB models are specified using C++ templates, requiring the user to be at least 
 
 #### Future
 We intend to make a fully Pythonic modeling library that closely mirrors [PyMC2](https://github.com/pymc-devs/pymc) in syntax
-and ease of model specification, but uses either TMB or [PyCppAD](https://github.com/b45ch1/pycppad) under the hood.
+and ease of model specification, but uses either [CppAD mixed](https://github.com/bradbell/cppad_mixed) or [TensorFlow](https://github.com/tensorflow/tensorflow) under the hood.
 
 ## Example
 A demo [iPython notebook](http://ipython.org/notebook.html) can be found at 
