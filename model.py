@@ -251,7 +251,7 @@ class model:
         self.obj_fun_built = True
 
 
-    def optimize(self, opt_fun='nlminb', method='L-BFGS-B', draws=100, verbose=False, random=None, quiet=False, params=[], noparams=False, **kwargs):
+    def optimize(self, opt_fun='nlminb', method='L-BFGS-B', draws=100, verbose=False, random=None, quiet=False, params=[], noparams=False, constrain=None, **kwargs):
         '''
         Optimize the model and store results in TMB_Model.TMB.fit
 
@@ -274,6 +274,9 @@ class model:
             list parameters by name to extract their posteriors from the model
         noparams : boolean, default False
             if True, will skip finding the means of the parameters entirely
+        constrain : float or None, default None
+            if float, will constrain any draws of a parameter to be within that many
+                standard deviations of the median
         **kwargs : additional arguments to be passed to the R optimization function
         '''
         # time function execution
@@ -314,7 +317,7 @@ class model:
         if not quiet:
             print('\n{}\n'.format(''.join(['-' for i in range(80)])))
         if not noparams:
-            self.simulate_parameters(draws=draws, quiet=quiet, params=params)
+            self.simulate_parameters(draws=draws, quiet=quiet, params=params, constrain=constrain)
 
     def report(self, name):
         '''
@@ -327,7 +330,7 @@ class model:
         '''
         return np.array(get_R_attr(get_R_attr(self.TMB.model, 'report')(), name))
 
-    def simulate_parameters(self, draws=100, params=[], quiet=False):
+    def simulate_parameters(self, draws=100, params=[], quiet=False, constrain=None):
         '''
         Simulate draws from the posterior variance/covariance matrix of the fixed and random effects
 
@@ -342,6 +345,9 @@ class model:
             list parameters by name to extract their posteriors from the model
         quiet : boolean, default False
             set to True in order to suppress outputting parameter summaries
+        constrain : float or None, default None
+            if float, will constrain any draws of a parameter to be within that many
+                standard deviations of the median
         '''
         # time function
         start = time.time()
@@ -434,6 +440,18 @@ class model:
         # make draws and copy into a python array
         if draws:
             param_draws = np.array(gen_draws(means, joint_prec, draws))
+            # constrain draws if requested
+            if constrain is not None:
+                # find current sd of draws
+                draw_sd = param_draws.std(axis=1)
+                # find current median
+                draw_median = np.median(param_draws, axis=1)
+                # find which draws are more than num_sd from the median
+                whacky_draws = np.where(np.any([ \
+                            np.greater(param_draws.T, draw_median + (constrain * draw_sd)), \
+                            np.less(param_draws.T, draw_median - (constrain * draw_sd))], axis=0).T)
+                # replace those draws with the median
+                param_draws[whacky_draws] = draw_median[whacky_draws[0]]
 
         ### store results
         # convert mean/sd to python
