@@ -440,23 +440,19 @@ class model:
         # make draws and copy into a python array
         if draws:
             param_draws = np.array(gen_draws(means, joint_prec, draws))
-            # constrain draws if requested
-            if constrain is not None:
-                # find current sd of draws
-                draw_sd = param_draws.std(axis=1)
-                # find current median
-                draw_median = np.median(param_draws, axis=1)
-                # find which draws are more than num_sd from the median
-                whacky_draws = np.where(np.any([ \
-                            np.greater(param_draws.T, draw_median + (constrain * draw_sd)), \
-                            np.less(param_draws.T, draw_median - (constrain * draw_sd))], axis=0).T)
-                # replace those draws with the median
-                param_draws[whacky_draws] = draw_median[whacky_draws[0]]
 
         ### store results
         # convert mean/sd to python
         means = np.array(means)
         sds = np.array(sds)
+        # constrain draws if requested
+        if constrain is not None and draws:
+            # find which draws are more than {constraint} standard deviations from the mean
+            wacky_draws = np.where(np.any([ \
+                        np.greater(param_draws.T, means + (constrain * sds)), \
+                        np.less(param_draws.T, means - (constrain * sds))], axis=0).T)
+            # replace those draws with the mean
+            param_draws[wacky_draws] = means[wacky_draws[0]]
         # add parameters' mean, sd, and optionally draws to the parameters dictionary
         for p in set(ordered_params):
             i = [ii for ii,pp in enumerate(ordered_params) if pp == p] # names will be the same for every item in a vector/matrix, so find all corresponding indices
