@@ -251,7 +251,7 @@ class model:
         self.obj_fun_built = True
 
 
-    def optimize(self, opt_fun='nlminb', method='L-BFGS-B', draws=100, verbose=False, random=None, quiet=False, params=[], noparams=False, constrain=None, **kwargs):
+    def optimize(self, opt_fun='nlminb', method='L-BFGS-B', draws=100, verbose=False, random=None, quiet=False, params=[], noparams=False, constrain=False, **kwargs):
         '''
         Optimize the model and store results in TMB_Model.TMB.fit
 
@@ -274,7 +274,7 @@ class model:
             list parameters by name to extract their posteriors from the model
         noparams : boolean, default False
             if True, will skip finding the means of the parameters entirely
-        constrain : float or None, default None
+        constrain : float or boolean, default False
             if float, will constrain any draws of a parameter to be within that many
                 standard deviations of the median
         **kwargs : additional arguments to be passed to the R optimization function
@@ -330,7 +330,7 @@ class model:
         '''
         return np.array(get_R_attr(get_R_attr(self.TMB.model, 'report')(), name))
 
-    def simulate_parameters(self, draws=100, params=[], quiet=False, constrain=None):
+    def simulate_parameters(self, draws=100, params=[], quiet=False, constrain=False):
         '''
         Simulate draws from the posterior variance/covariance matrix of the fixed and random effects
 
@@ -345,7 +345,7 @@ class model:
             list parameters by name to extract their posteriors from the model
         quiet : boolean, default False
             set to True in order to suppress outputting parameter summaries
-        constrain : float or None, default None
+        constrain : float or boolean, default False
             if float, will constrain any draws of a parameter to be within that many
                 standard deviations of the median
         '''
@@ -446,7 +446,7 @@ class model:
         means = np.array(means)
         sds = np.array(sds)
         # constrain draws if requested
-        if constrain is not None and draws:
+        if constrain and draws:
             # find which draws are more than {constraint} standard deviations from the mean
             wacky_draws = np.where(np.any([ \
                         np.greater(param_draws.T, means + (constrain * sds)), \
