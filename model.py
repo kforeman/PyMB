@@ -2,11 +2,11 @@ import numpy as np
 import time
 import warnings
 import readline
+from scipy.sparse import csc_matrix
 
 def get_R_attr(obj, attr):
     '''
     Convenience function to return a named attribute from an R object (ListVector)
-
     e.g. get_R_attr(myModel.TMB.model, 'hessian') would return the equivalent of model$hessian
     '''
     return obj[obj.names.index(attr)]
@@ -15,9 +15,7 @@ class model:
     def __init__(self, name=None, filepath=None, codestr=None, **kwargs):
         '''
         Create a new TMB model, which utilizes an embedded R instance
-
         Optionally compile and load model upon instantiation if passing in filepath or codestr
-
         Parameters
         ----------
         name : str, default "TMB_{random.randint(1e10,9e10)}"
@@ -64,7 +62,6 @@ class model:
         TMB='/usr/local/lib/R/site-library/TMB/include', LR='/usr/lib/R/lib', verbose=False, load=True):
         '''
         Compile TMB C++ code and load into R
-
         Parameters
         ----------
         filepath : str
@@ -207,7 +204,6 @@ class model:
     def build_objective_function(self, random=[], hessian=True, **kwargs):
         '''
         Builds the model objective function
-
         Parameters
         ----------
         random : list, default []
@@ -254,7 +250,6 @@ class model:
     def optimize(self, opt_fun='nlminb', method='L-BFGS-B', draws=100, verbose=False, random=None, quiet=False, params=[], noparams=False, constrain=False, **kwargs):
         '''
         Optimize the model and store results in TMB_Model.TMB.fit
-
         Parameters
         ----------
         opt_fun : str, default 'nlminb'
@@ -322,7 +317,6 @@ class model:
     def report(self, name):
         '''
         Retrieve a quantity that has been reported within the model using e.g. REPORT(Y_hat);
-
         Parameters
         ----------
         name : str
@@ -333,9 +327,7 @@ class model:
     def simulate_parameters(self, draws=100, params=[], quiet=False, constrain=False):
         '''
         Simulate draws from the posterior variance/covariance matrix of the fixed and random effects
-
         Stores draws in Model.parameters dictionary
-
         Parameters
         ----------
         draws : int or boolean, default 1000
@@ -361,7 +353,8 @@ class model:
 
         # run sdreport to get everything in the right format
         if not self.random:
-            self.sdreport = self.TMB.sdreport(self.TMB.model, getJointPrecision=True, hessian_fixed=get_R_attr(self.TMB.model, 'he')())
+            self.sdreport = self.TMB.sdreport(self.TMB.model, getJointPrecision=True, 
+                                              hessian_fixed=get_R_attr(self.TMB.model, 'he')())
         else:
             self.sdreport = self.TMB.sdreport(self.TMB.model, getJointPrecision=True)
 
@@ -379,10 +372,15 @@ class model:
         # extract the joint precision matrix
         joint_prec_full = get_R_attr(self.sdreport, 'jointPrecision')
         joint_prec_names = self.R.r('row.names')(joint_prec_full)
-        joint_prec = extract_params(joint_prec_full, joint_prec_names, params)
+        joint_prec_R = extract_params(joint_prec_full, joint_prec_names, params)
+        def get_R_slot(obj, slot):
+            return np.array(m.R.r('function(obj) {{ return(obj@{}) }}'.format(slot))(obj))
+        joint_prec = csc_matrix((get_R_slot(joint_prec_R, 'x'), 
+                                 get_R_slot(joint_prec_R, 'i'), 
+                                 get_R_slot(joint_prec_R, 'p')))
 
         # make a list of all the parameters, ordered by position in the joint precision matrix
-        ordered_params = np.array(self.R.r('row.names')(joint_prec))
+        ordered_params = np.array(self.R.r('row.names')(joint_prec_R))
 
         ### extract fixed effects
         # means
@@ -428,29 +426,31 @@ class model:
                 sds[i_joint[0]:i_joint[-1]+1] = fixed_sd[i_fixed[0]:i_fixed[-1]+1]
 
         ### generate draws
-        ## simulation function
-        # see http://en.wikipedia.org/wiki/Multivariate_normal_distribution#Drawing_values_from_the_distribution
-        # note: do this in R (not Python) in order to prevent having to convert the precision matrix to dense
-        gen_draws = self.R.r('''function(mu, prec, n.sims) {
-          z = matrix(rnorm(length(mu) * n.sims), ncol=n.sims);
-          L_inv = Cholesky(prec);
-          draws = mu + solve(as(L_inv, "pMatrix"), solve(t(as(L_inv, "Matrix")), z));
-          return(as.matrix(draws));
-        }''')
-        # make draws and copy into a python array
-        if draws:
-            param_draws = np.array(gen_draws(means, joint_prec, draws))
-
-        ### store results
         # convert mean/sd to python
         means = np.array(means)
         sds = np.array(sds)
+        ## simulation function
+        # see http://en.wikipedia.org/wiki/Multivariate_normal_distribution#Drawing_values_from_the_distribution
+        # note: do this in R (not Python) in order to prevent having to convert the precision matrix to dense
+        def gen_draws(mu, prec, n):
+            from scikits.sparse.cholmod import cholesky
+            from scipy.sparse.linalg import spsolve
+            z = np.random.normal(size=(mu.shape[0],n))
+            chol_jp = cholesky(prec)
+            ### note: would typically use scikits.sparse.cholmod.cholesky.solve_Lt, 
+            ### but there seems to be a bug there: https://github.com/njsmith/scikits-sparse/issues/9#issuecomment-76862652
+            return mu[:,np.newaxis] + chol_jp.apply_Pt(spsolve(chol_jp.L().T, z))
+        #### make draws
+        if draws:
+            param_draws = gen_draws(means, joint_prec, draws)
+
+        ### store results
         # constrain draws if requested
         if constrain and draws:
             # find which draws are more than {constraint} standard deviations from the mean
             wacky_draws = np.where(np.any([ \
-                        np.greater(param_draws.T, means + (constrain * sds)), \
-                        np.less(param_draws.T, means - (constrain * sds))], axis=0).T)
+                          np.greater(param_draws.T, means + (constrain * sds)), \
+                          np.less(param_draws.T, means - (constrain * sds))], axis=0).T)
             # replace those draws with the mean
             param_draws[wacky_draws] = means[wacky_draws[0]]
         # add parameters' mean, sd, and optionally draws to the parameters dictionary
@@ -471,6 +471,13 @@ class model:
                     'mean': means[i],
                     'sd': sds[i]
                 }
+        # store "raw" results
+        self._params = {
+            'sd': sds,
+            'mean': means,
+            'joint_prec': joint_prec,
+            'name': ordered_params
+        }
 
         ### print results
         if not quiet:
@@ -500,3 +507,4 @@ class model:
             else:
                 print('{p}:\n\tmean\t{m}\n\tsd\t{s}\n\tdraws\tNone'.format(p=p, m=v['mean'], s=v['sd']))
         np.set_printoptions(threshold=1000, edgeitems=3)
+
