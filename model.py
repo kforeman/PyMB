@@ -353,7 +353,7 @@ class model:
 
         # run sdreport to get everything in the right format
         if not self.random:
-            self.sdreport = self.TMB.sdreport(self.TMB.model, getJointPrecision=True, 
+            self.sdreport = self.TMB.sdreport(self.TMB.model, getJointPrecision=True,
                                               hessian_fixed=get_R_attr(self.TMB.model, 'he')())
         else:
             self.sdreport = self.TMB.sdreport(self.TMB.model, getJointPrecision=True)
@@ -373,10 +373,13 @@ class model:
         joint_prec_full = get_R_attr(self.sdreport, 'jointPrecision')
         joint_prec_names = self.R.r('row.names')(joint_prec_full)
         joint_prec_R = extract_params(joint_prec_full, joint_prec_names, params)
+
+        # convert joint precision matrix to scipy.sparse.csc_matrix
+        # (bypassing dense conversion step that happens if you use rpy2)
         def get_R_slot(obj, slot):
-            return np.array(m.R.r('function(obj) {{ return(obj@{}) }}'.format(slot))(obj))
-        joint_prec = csc_matrix((get_R_slot(joint_prec_R, 'x'), 
-                                 get_R_slot(joint_prec_R, 'i'), 
+            return np.array(self.R.r('function(obj) {{ return(obj@{}) }}'.format(slot))(obj))
+        joint_prec = csc_matrix((get_R_slot(joint_prec_R, 'x'),
+                                 get_R_slot(joint_prec_R, 'i'),
                                  get_R_slot(joint_prec_R, 'p')))
 
         # make a list of all the parameters, ordered by position in the joint precision matrix
@@ -431,13 +434,12 @@ class model:
         sds = np.array(sds)
         ## simulation function
         # see http://en.wikipedia.org/wiki/Multivariate_normal_distribution#Drawing_values_from_the_distribution
-        # note: do this in R (not Python) in order to prevent having to convert the precision matrix to dense
         def gen_draws(mu, prec, n):
             from scikits.sparse.cholmod import cholesky
             from scipy.sparse.linalg import spsolve
             z = np.random.normal(size=(mu.shape[0],n))
             chol_jp = cholesky(prec)
-            ### note: would typically use scikits.sparse.cholmod.cholesky.solve_Lt, 
+            ### note: would typically use scikits.sparse.cholmod.cholesky.solve_Lt,
             ### but there seems to be a bug there: https://github.com/njsmith/scikits-sparse/issues/9#issuecomment-76862652
             return mu[:,np.newaxis] + chol_jp.apply_Pt(spsolve(chol_jp.L().T, z))
         #### make draws
