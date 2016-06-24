@@ -4,3 +4,4 @@ tmb_tmp/
 *.pyc
 .ipynb_checkpoints/
 .DS_Store
+.idea
