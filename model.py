@@ -247,7 +247,7 @@ class model:
         self.obj_fun_built = True
 
 
-    def optimize(self, opt_fun='nlminb', method='L-BFGS-B', draws=100, verbose=False, random=None, quiet=False, params=[], noparams=False, constrain=False, **kwargs):
+    def optimize(self, opt_fun='nlminb', method='L-BFGS-B', draws=100, verbose=False, random=None, quiet=False, params=[], noparams=False, constrain=False, warning=True, **kwargs):
         '''
         Optimize the model and store results in TMB_Model.TMB.fit
         Parameters
@@ -272,6 +272,8 @@ class model:
         constrain : float or boolean, default False
             if float, will constrain any draws of a parameter to be within that many
                 standard deviations of the median
+        warning : bool
+            print warning when there is non convergence with a model
         **kwargs : additional arguments to be passed to the R optimization function
         '''
         # time function execution
@@ -307,6 +309,10 @@ class model:
             self.R.r('sink()')
         else:
             print('\nModel optimization complete in {:.1f}s.\n'.format(time.time()-start))
+
+        if warning and self.TMB.fit[self.TMB.fit.names.index("convergence")][0] != 0:
+            print "\nThe model did not successfully converge, exited with the following warning message:"
+            print self.TMB.fit[self.TMB.fit.names.index("message")][0] + "\n"
 
         # simulate parameters
         if not quiet:
