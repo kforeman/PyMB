@@ -310,9 +310,11 @@ class model:
         else:
             print('\nModel optimization complete in {:.1f}s.\n'.format(time.time()-start))
 
-        if warning and self.TMB.fit[self.TMB.fit.names.index("convergence")][0] != 0:
-            print "\nThe model did not successfully converge, exited with the following warning message:"
-            print self.TMB.fit[self.TMB.fit.names.index("message")][0] + "\n"
+        # check for convergence
+        self.convergence = self.TMB.fit[self.TMB.fit.names.index('convergence')][0]
+        if warning and self.convergence != 0:
+            print '\nThe model did not successfully converge, exited with the following warning message:'
+            print self.TMB.fit[self.TMB.fit.names.index('message')][0] + '\n'
 
         # simulate parameters
         if not quiet:
