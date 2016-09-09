@@ -376,12 +376,18 @@ class model:
                 return(obj[ii,ii]);
             };
         }''')
-
+        
         # extract the joint precision matrix
-        joint_prec_full = get_R_attr(self.sdreport, 'jointPrecision')
-        joint_prec_names = self.R.r('row.names')(joint_prec_full)
-        joint_prec_R = extract_params(joint_prec_full, joint_prec_names, params)
-
+        if not self.random:
+            joint_prec_full = self.R.r('function(m) { return(1./m) }')(get_R_attr(self.sdreport, 'cov.fixed'))
+            joint_prec_names = get_R_attr(self.sdreport, 'par.fixed').names
+            joint_prec_dense = extract_params(joint_prec_full, joint_prec_names, params)
+            joint_prec_R = self.R.r('as')(joint_prec_dense, 'sparseMatrix')
+        else:
+            joint_prec_full = get_R_attr(self.sdreport, 'jointPrecision')
+            joint_prec_names = self.R.r('row.names')(joint_prec_full)
+            joint_prec_R = extract_params(joint_prec_full, joint_prec_names, params)
+            
         # convert joint precision matrix to scipy.sparse.csc_matrix
         # (bypassing dense conversion step that happens if you use rpy2)
         def get_R_slot(obj, slot):
@@ -391,7 +397,10 @@ class model:
                                  get_R_slot(joint_prec_R, 'p')))
 
         # make a list of all the parameters, ordered by position in the joint precision matrix
-        ordered_params = np.array(self.R.r('row.names')(joint_prec_R))
+        if not self.random:
+            ordered_params = joint_prec_names
+        else:
+            ordered_params = np.array(self.R.r('row.names')(joint_prec_R))
 
         ### extract fixed effects
         # means
@@ -405,15 +414,18 @@ class model:
         fixed_sd = extract_params(self.R.r('sqrt')(fixed_sd_raw), fixed_names, params)
 
         ### extract random effects
-        # means
-        ran_mean_raw = get_R_attr(self.sdreport, 'par.random')
-        # sds
-        ran_sd_raw = get_R_attr(self.sdreport, 'diag.cov.random')
-        # names
-        ran_names = ran_mean_raw.names
-        # keep just selected
-        ran_mean = extract_params(ran_mean_raw, ran_names,  params)
-        ran_sd = extract_params(self.R.r('sqrt')(ran_sd_raw), ran_names, params)
+        if self.random:
+            # means
+            ran_mean_raw = get_R_attr(self.sdreport, 'par.random')
+            # sds
+            ran_sd_raw = get_R_attr(self.sdreport, 'diag.cov.random')
+            # names
+            ran_names = ran_mean_raw.names
+            # keep just selected
+            ran_mean = extract_params(ran_mean_raw, ran_names,  params)
+            ran_sd = extract_params(self.R.r('sqrt')(ran_sd_raw), ran_names, params)
+        else:
+            ran_names = []
 
         ### put the means/sds in the right order
         ## the reason being that the joint precision matrix is based on order of model specification, ignoring random vs fixed
