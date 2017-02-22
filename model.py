@@ -78,7 +78,9 @@ class model:
                   See http://stackoverflow.com/a/13224980/1028347
         TMB : str, default '/usr/local/lib/R/site-library/TMB/include'
             location of TMB library
-        verbose : boolean, default False
+        LR : str, default '/usr/lib/R/lib'
+            location of R's library files
+	verbose : boolean, default False
             print compiler warnings
         load : boolean, default True
             load the model into Python after compilation
