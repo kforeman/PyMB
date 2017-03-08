@@ -457,7 +457,10 @@ class model:
         ## simulation function
         # see http://en.wikipedia.org/wiki/Multivariate_normal_distribution#Drawing_values_from_the_distribution
         def gen_draws(mu, prec, n):
-            from scikits.sparse.cholmod import cholesky
+            try:
+		from sksparse.cholmod import cholesky
+	    except:
+		from scikits.sparse.cholmod import cholesky
             from scipy.sparse.linalg import spsolve
             z = np.random.normal(size=(mu.shape[0],n))
             chol_jp = cholesky(prec)
