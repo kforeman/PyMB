@@ -1,6 +1,7 @@
 import numpy as np
 import time
 import warnings
+import os
 import readline
 from scipy.sparse import csc_matrix
 
@@ -80,7 +81,7 @@ class model:
             location of TMB library
         LR : str, default '/usr/lib/R/lib'
             location of R's library files
-	verbose : boolean, default False
+	    verbose : boolean, default False
             print compiler warnings
         load : boolean, default True
             load the model into Python after compilation
@@ -93,7 +94,6 @@ class model:
             raise Exception('No filepath or codestr found.')
 
         # make the output directory if it doesn't already exist
-        import os
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
@@ -188,6 +188,7 @@ class model:
         self.R.r('dyn.load("{so_file}")'.format(so_file=so_file))
         self.R.r('sink()')
         self.model_loaded = True
+        self.dll = os.path.splitext(os.path.basename(so_file))[0]
 
     def check_inputs(self, thing):
         import re
@@ -243,7 +244,8 @@ class model:
 
         # build the objective function
         self.TMB.model = self.TMB.MakeADFun(data=self.R.ListVector(self.data),
-            parameters=self.R.ListVector(self.init), hessian=hessian, **kwargs)
+            parameters=self.R.ListVector(self.init), hessian=hessian, 
+            DLL=self.dll, **kwargs)
 
         # set obj_fun_built
         self.obj_fun_built = True
