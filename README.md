@@ -22,6 +22,8 @@ A demo [iPython notebook](http://ipython.org/notebook.html) can be found at
 (http://nbviewer.ipython.org/github/kforeman/PyMB/blob/master/Examples/Linear%20Regression%20-%20Magic.ipynb).
 
 ## Installation
+An example Dockerfile that will create a working PyMB install can be found [here](https://gist.github.com/kforeman/4cd9495f0222b6fbfa79ebcee993ae78)
+
 #### Dependencies
 * [R](http://www.r-project.org/)
 * [TMB](https://github.com/kaskr/adcomp)
