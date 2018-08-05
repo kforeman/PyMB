@@ -42,10 +42,12 @@ cache: packages
 
 jobs:
   include:
-    - stage: Set up environment
-      python: 3.6
+    - stage: Set up Python and R environment
       script: 
         - bin/01_set_env.sh
+    - stage: Install TMB
+      script:
+        - bin/02_install_TMB.sh
 
 
 
