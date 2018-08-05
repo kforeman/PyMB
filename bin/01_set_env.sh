@@ -1,1 +1,1 @@
-python -c 'import numpy as np; np.show_config()'
+python3 -c 'import numpy as np; np.show_config()'

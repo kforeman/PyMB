@@ -5,6 +5,7 @@ services:
 
 language: python
 
+
 cache: packages
 
 os:
@@ -17,8 +18,8 @@ os:
 
 
 before_install:
-- docker pull sadatnfs/pymb36:v1
-- docker run -it --rm sadatnfs/pymb36:v1
+- docker pull continuumio/miniconda3
+- docker run  continuumio/miniconda3
 
 jobs:
   include:
