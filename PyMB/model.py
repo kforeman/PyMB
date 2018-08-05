@@ -1,10 +1,26 @@
-import numpy as np
+
+from pprint import pprint
+import os
+import re
+import readline
+import shutil
+import subprocess
 import time
 import warnings
-import os
-import readline
-import scikit-sparse
+
+import numpy as np
+from rpy2.robjects.packages import importr
+from rpy2 import robjects as ro
+import rpy2.robjects.numpy2ri
 from scipy.sparse import csc_matrix
+from scipy.sparse.linalg import spsolve
+try:
+    from sksparse.cholmod import cholesky
+except:
+    from scikits.sparse.cholmod import cholesky
+
+
+
 
 
 __all__ = ['get_R_attr', 'model']
@@ -45,15 +61,12 @@ class model:
             np.random.randint(1e10, 9e10))
 
         # initiate R session
-        from rpy2 import robjects as ro
         self.R = ro
 
         # turn on numpy to R conversion
-        import rpy2.robjects.numpy2ri
         rpy2.robjects.numpy2ri.activate()
 
         # create TMB link
-        from rpy2.robjects.packages import importr
         self.TMB = importr('TMB')
         importr('Matrix')
 
@@ -112,7 +125,6 @@ class model:
         if filepath:
             self.filepath = os.path.join(
                 output_dir, '{name}.cpp'.format(name=self.name))
-            import shutil
             shutil.copy(filepath, self.filepath)
             if codestr:
                 warnings.warn(
@@ -137,8 +149,7 @@ class model:
         # something about shared libraries
         # not being hooked up correctly inside of embedded R sessions
         # TODO: skip recompiling when model has not changed
-        import subprocess
-        from pprint import pprint
+
         # compile cpp
         comp = '{cc} {include} {options} {f} -o {o}'.format(
             cc=cc,
@@ -199,10 +210,8 @@ class model:
                 output_dir=output_dir, name=self.name))
             self.R.r('sink()')
             del self.R
-            from rpy2 import robjects as ro
             self.R = ro
             del self.TMB
-            from rpy2.robjects.packages import importr
             self.TMB = importr('TMB')
 
         # load the model into R
@@ -226,7 +235,6 @@ class model:
         self.dll = os.path.splitext(os.path.basename(so_file))[0]
 
     def check_inputs(self, thing):
-        import re
         missing = []
         with file(self.filepath) as f:
             for l in f:
@@ -510,11 +518,7 @@ class model:
         # see http://en.wikipedia.org/wiki/Multivariate_normal_distribution#Drawing_values_from_the_distribution
 
         def gen_draws(mu, prec, n):
-            try:
-                from sksparse.cholmod import cholesky
-            except:
-                from scikits.sparse.cholmod import cholesky
-            from scipy.sparse.linalg import spsolve
+
             z = np.random.normal(size=(mu.shape[0], n))
             chol_jp = cholesky(prec)
             # note: would typically use scikits.sparse.cholmod.cholesky.solve_Lt,
