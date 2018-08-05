@@ -81,7 +81,7 @@ class model:
             location of TMB library
         LR : str, default '/usr/lib/R/lib'
             location of R's library files
-	    verbose : boolean, default False
+        verbose : boolean, default False
             print compiler warnings
         load : boolean, default True
             load the model into Python after compilation
@@ -317,8 +317,8 @@ class model:
         # check for convergence
         self.convergence = self.TMB.fit[self.TMB.fit.names.index('convergence')][0]
         if warning and self.convergence != 0:
-            print '\nThe model did not successfully converge, exited with the following warning message:'
-            print self.TMB.fit[self.TMB.fit.names.index('message')][0] + '\n'
+            print('\nThe model did not successfully converge, exited with the following warning message:')
+            print(self.TMB.fit[self.TMB.fit.names.index('message')][0] + '\n')
 
         # simulate parameters
         if not quiet:
@@ -460,9 +460,9 @@ class model:
         # see http://en.wikipedia.org/wiki/Multivariate_normal_distribution#Drawing_values_from_the_distribution
         def gen_draws(mu, prec, n):
             try:
-		from sksparse.cholmod import cholesky
-	    except:
-		from scikits.sparse.cholmod import cholesky
+                from sksparse.cholmod import cholesky
+            except:
+                from scikits.sparse.cholmod import cholesky
             from scipy.sparse.linalg import spsolve
             z = np.random.normal(size=(mu.shape[0],n))
             chol_jp = cholesky(prec)
