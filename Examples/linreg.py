@@ -36,6 +36,7 @@ tmbinclude = ro.r('paste0(find.package("TMB"), "/include")')[0]
 rinclude = os.path.join(os.getenv("CONDA_PREFIX"), "lib/R/include")
 rlib = os.path.join(os.getenv("CONDA_PREFIX"), "lib/R/lib")
 
+# rpy2.rinterface.R_HOME
 
 # compile the model
 m.compile(codestr=linreg_code,

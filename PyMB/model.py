@@ -587,7 +587,7 @@ class model:
         Print summary statistics of the model parameter fits
         '''
         np.set_printoptions(threshold=5, edgeitems=2)
-        for p, v in self.parameters.iteritems():
+        for p, v in self.parameters.items():
             if 'draws' in v:
                 d = v['draws']
                 if d.shape[0] == 1:
