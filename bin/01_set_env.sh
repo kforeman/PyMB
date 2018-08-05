@@ -6,3 +6,7 @@ conda install -c conda-forge -y scikit-sparse
 ## Install R and rpy2
 conda install -c r -y r-base=3.5.0
 pip install rpy2
+
+## Check R
+which -a R
+R -e 'sessionInfo()'
