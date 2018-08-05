@@ -3,8 +3,6 @@ sudo: required
 language: python
 
 python:
-  - "2.7"
-  - "3.5"
   - "3.6"
 
 before_install:
@@ -48,6 +46,7 @@ cache: packages
 jobs:
   include:
     - stage: Set up environment
+      python: 3.6
       script: 
         - bin/01_set_env.sh
 
