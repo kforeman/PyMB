@@ -1,19 +1,16 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 import numpy
-
-
-VERSION = 0.1
 
 setup(
     name='PyMB',
-    version=VERSION,
-    packages=find_packages(),
+    version='0.1',
+    packages=['', 'PyMB.magic'],
+    url='https://github.com/kforeman/PyMB',
+    license='GNU General Public License v2.0',
+    author='Kyle Foreman',
+    author_email='kforeman <at> post <dot> harvard <dot> edu',
+    description='Python Model Builder',
     include_dirs=[
-        numpy.get_include(),
-    ],
-    include_package_data=True,
-    install_requires=[
-        'numpy', 'rpy2',
+        'numpy', 'rpy2', 'scipy',
     ]
 )
- 

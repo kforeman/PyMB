@@ -27,6 +27,7 @@ An example Dockerfile that will create a working PyMB install can be found [here
 * [TMB](https://github.com/kaskr/adcomp)
 * [rpy2](http://rpy.sourceforge.net/)
 * [numpy](http://www.numpy.org/)
+* [scipy](https://scipy.org/)
 
 #### Importing
 `setup.py` has not yet been added. For now simply `git clone git@github.com:kforeman/PyMB.git` into your working directory, 
