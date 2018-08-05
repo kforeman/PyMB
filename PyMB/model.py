@@ -6,6 +6,9 @@ import readline
 from scipy.sparse import csc_matrix
 
 
+__all__ = ['get_R_attr', 'model']
+
+
 def get_R_attr(obj, attr):
     '''
     Convenience function to return a named attribute from an R object (ListVector)
@@ -283,7 +286,8 @@ class model:
         # set obj_fun_built
         self.obj_fun_built = True
 
-    def optimize(self, opt_fun='nlminb', method='L-BFGS-B', draws=100, verbose=False, random=None, quiet=False, params=[], noparams=False, constrain=False, warning=True, **kwargs):
+    def optimize(self, opt_fun='nlminb', method='L-BFGS-B', draws=100, verbose=False, 
+        random=None, quiet=False, params=[], noparams=False, constrain=False, warning=True, **kwargs):
         '''
         Optimize the model and store results in TMB_Model.TMB.fit
         Parameters
