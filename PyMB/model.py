@@ -494,9 +494,9 @@ class model:
         # model specification, ignoring random vs fixed
         # initialize R vectors
         means = self.R.FloatVector(
-            [self.R.NA_Real for i in xrange(len(ordered_params))])
+            [self.R.NA_Real for i in range(len(ordered_params))])
         sds = self.R.FloatVector(
-            [self.R.NA_Real for i in xrange(len(ordered_params))])
+            [self.R.NA_Real for i in range(len(ordered_params))])
         # loop through and add the parameters to the means/sds in the correct order
         for p in set(ordered_params):
             # index in joint precision matrix

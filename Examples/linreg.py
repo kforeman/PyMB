@@ -34,7 +34,7 @@ Type objective_function<Type>::operator() (){
 # Get the necessary paths to compile TMB code
 tmbinclude = ro.r('paste0(find.package("TMB"), "/include")')[0]
 rinclude = os.path.join(os.getenv("CONDA_PREFIX"), "lib/R/include")
-rlib = os.path.join(os.getenv("CONDA_PREFIX"), "lib/r/lib")
+rlib = os.path.join(os.getenv("CONDA_PREFIX"), "lib/R/lib")
 
 
 # compile the model
