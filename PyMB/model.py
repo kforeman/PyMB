@@ -78,7 +78,8 @@ class model:
         if filepath or codestr:
             self.compile(filepath=filepath, codestr=codestr, **kwargs)
 
-    def compile(self, filepath=None, codestr=None, output_dir='tmb_tmp',
+    def compile(self, filepath=None, codestr=None, 
+                output_dir='tmb_tmp',
                 cc='g++',
                 R='/usr/share/R/include',
                 TMB='/usr/local/lib/R/site-library/TMB/include',
@@ -352,8 +353,10 @@ class model:
         # fit the model
         if quiet:
             self.R.r('sink("/dev/null")')
-        self.TMB.fit = self.R.r[opt_fun](start=get_R_attr(self.TMB.model, 'par'), objective=get_R_attr(self.TMB.model, 'fn'),
-                                         gradient=get_R_attr(self.TMB.model, 'gr'), method=method, **kwargs)
+        self.TMB.fit = self.R.r[opt_fun](start=get_R_attr(self.TMB.model, 'par'),
+                                         objective=get_R_attr(self.TMB.model, 'fn'),
+                                         gradient=get_R_attr(self.TMB.model, 'gr'),
+                                         method=method, **kwargs)
         if quiet:
             self.R.r('sink()')
         else:
@@ -487,7 +490,8 @@ class model:
             ran_names = []
 
         # put the means/sds in the right order
-        # the reason being that the joint precision matrix is based on order of model specification, ignoring random vs fixed
+        # the reason being that the joint precision matrix is based on order of
+        # model specification, ignoring random vs fixed
         # initialize R vectors
         means = self.R.FloatVector(
             [self.R.NA_Real for i in xrange(len(ordered_params))])
@@ -522,7 +526,8 @@ class model:
             z = np.random.normal(size=(mu.shape[0], n))
             chol_jp = cholesky(prec)
             # note: would typically use scikits.sparse.cholmod.cholesky.solve_Lt,
-            # but there seems to be a bug there: https://github.com/njsmith/scikits-sparse/issues/9#issuecomment-76862652
+            # but there seems to be a bug there:
+            # https://github.com/njsmith/scikits-sparse/issues/9#issuecomment-76862652
             return mu[:, np.newaxis] + chol_jp.apply_Pt(spsolve(chol_jp.L().T, z))
         # make draws
         if draws:
@@ -590,10 +595,12 @@ class model:
                         p=p, m=v['mean'], s=v['sd'], d=d, z=d.shape))
                 elif len(d.shape) == 2:
                     print('{p}:\n\tmean\t{m}\n\tsd\t{s}\n\tdraws\t{d}\n\tshape\t{z}'.format(
-                        p=p, m=v['mean'], s=v['sd'], d='[{0},\n\t\t ...,\n\t\t {1}]'.format(d[0, :], d[d.shape[0]-1, :]), z=d.shape))
+                        p=p, m=v['mean'], s=v['sd'], d='[{0},\n\t\t ...,\n\t\t {1}]'.format(
+                            d[0, :], d[d.shape[0]-1, :]), z=d.shape))
                 else:
                     print('{p}:\n\tmean\t{m}\n\tsd\t{s}\n\tdraws\t{d}\n\tshape\t{z}'.format(
-                        p=p, m=v['mean'], s=v['sd'], d='[[{0},\n\t\t ...,\n\t\t {1}]]'.format(d[0, 0, :], d[d.shape[0]-1, d.shape[1]-1, :]), z=d.shape))
+                        p=p, m=v['mean'], s=v['sd'], d='[[{0},\n\t\t ...,\n\t\t {1}]]'.format(
+                            d[0, 0, :], d[d.shape[0]-1, d.shape[1]-1, :]), z=d.shape))
             else:
                 print('{p}:\n\tmean\t{m}\n\tsd\t{s}\n\tdraws\tNone'.format(
                     p=p, m=v['mean'], s=v['sd']))

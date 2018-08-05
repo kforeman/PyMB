@@ -2,10 +2,16 @@ from setuptools import setup, find_packages
 import numpy
 VERSION = 0.1
 
+interactive_requirements = [
+    'IPython',
+    'jupyter',
+]
+
+
 setup(
     name='PyMB',
     version=VERSION,
-#    packages=['', 'PyMB.magic'],
+    #    packages=['', 'PyMB.magic'],
     packages=find_packages(),
     url='https://github.com/kforeman/PyMB',
     license='GNU General Public License v2.0',
@@ -17,5 +23,9 @@ setup(
     ],
     install_requires=[
         'numpy', 'rpy2', 'scipy', 'scikit-sparse',
-    ]
+    ],
+    extras_require={
+        'interactive': interactive_requirements,
+    }
+
 )
