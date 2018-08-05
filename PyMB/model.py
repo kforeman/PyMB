@@ -138,9 +138,9 @@ class model:
 
             # only rewrite cpp if identical code found
             if os.path.isfile(self.filepath) == False or \
-                    file(self.filepath, 'r').read() != codestr:
+                    open(self.filepath, 'r').read() != codestr:
                 print('Saving model to {}.'.format(self.filepath))
-                with file(self.filepath, 'w') as f:
+                with open(self.filepath, 'w') as f:
                     f.write(codestr)
             else:
                 print('Using {}.'.format(self.filepath))
@@ -237,7 +237,7 @@ class model:
 
     def check_inputs(self, thing):
         missing = []
-        with file(self.filepath) as f:
+        with open(self.filepath) as f:
             for l in f:
                 if re.match('^PARAMETER' if thing == 'init' else '^{}'.format(thing.upper()), l.strip()):
                     i = re.search(r"\(([A-Za-z0-9_]+)\)", l.strip()).group(1)
