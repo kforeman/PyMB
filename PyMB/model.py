@@ -3,6 +3,7 @@ import time
 import warnings
 import os
 import readline
+import scikit-sparse
 from scipy.sparse import csc_matrix
 
 
