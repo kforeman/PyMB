@@ -33,8 +33,8 @@ Type objective_function<Type>::operator() (){
 
 # Get the necessary paths to compile TMB code
 tmbinclude = ro.r('paste0(find.package("TMB"), "/include")')[0]
-rinclude = os.path.join(os.getenv("CONDA_PREFIX"), "lib/R/include")
-rlib = os.path.join(os.getenv("CONDA_PREFIX"), "lib/R/lib")
+rinclude = rpy2.rinterface.R_HOME + "/include"
+rlib = rpy2.rinterface.R_HOME + "/lib"
 
 # rpy2.rinterface.R_HOME
 
@@ -61,5 +61,6 @@ m.init['logSigma'] = 0.
 m.random = ['alpha', 'Beta']
 
 # fit the model
-m.optimize()
+m.optimize(draws=500)
 print(m.report('Y_hat'))
+m.print_parameters()
