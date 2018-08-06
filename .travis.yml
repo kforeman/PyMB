@@ -21,7 +21,7 @@ cache: packages
 install:
   - conda create -c conda-forge -n pymb_test -y python=3.6 numpy scipy libiconv libxml2 lxml scikit-sparse
   - source activate pymb_test
-  - conda install -c r -y r-base rpy2
+  - which -a python && pip install rpy2
   - R -e 'install.packages("Matrix",  repos="http://cran.us.r-project.org", dependencies=T)'
   - R -e 'install.packages("TMB",  repos="http://cran.us.r-project.org", dependencies=T)'
   - cd ../PyMB && python setup.py install && python -c "import rpy2.rinterface as rinterface"
