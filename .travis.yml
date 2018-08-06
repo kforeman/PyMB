@@ -30,7 +30,7 @@ jobs:
   include:
     - stage: Run PyMB tests
       script:
-        - bin/02_pymb_linreg.sh
+        - python Examples/linreg.py
 
 notifications:
   email:
