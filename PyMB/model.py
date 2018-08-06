@@ -11,6 +11,7 @@ import warnings
 import numpy as np
 from rpy2.robjects.packages import importr
 from rpy2 import robjects as ro
+import rpy2.rinterface as rin
 import rpy2.robjects.numpy2ri
 from scipy.sparse import csc_matrix
 from scipy.sparse.linalg import spsolve
@@ -20,10 +21,7 @@ except:
     from scikits.sparse.cholmod import cholesky
 
 
-
-
-
-__all__ = ['get_R_attr', 'model']
+__all__ = ['get_R_attr', 'check_R_TMB', 'model']
 
 
 def get_R_attr(obj, attr):
@@ -32,6 +30,42 @@ def get_R_attr(obj, attr):
     e.g. get_R_attr(myModel.TMB.model, 'hessian') would return the equivalent of model$hessian
     '''
     return obj[obj.names.index(attr)]
+
+
+def check_R_TMB():
+    '''
+    Check whether R and TMB installations and paths are available
+    '''
+
+    # Start with R, but this is sort of circular, since we required rpy2
+    if rin.R_HOME is None:
+        raise Exception("R installation not found")
+
+    ## Check for R headers
+    if (not 'R.h' in os.listdir(rin.R_HOME + "/include")):
+        raise Exception("R.h not found")
+
+    # Find TMB package
+    if ro.r('find.package("TMB")') is None:
+        raise Exception("TMB package doesn't exist in this R installation")
+
+    # Find necessary TMB headers
+    if not 'TMB.hpp' in os.listdir(ro.r('paste0(find.package("TMB"), "/include")')[0]):
+        raise Exception("TMB headers not found in include directory. " +
+                        "Possible bad installation?")
+
+    # Finally, check for the R SO/dynlib:
+    if (not 'libR.dylib' in os.listdir(rin.R_HOME + "/lib")) & (not 'libR.so' in os.listdir(rin.R_HOME + "/lib")):
+        raise Exception("R shared libraries not found")
+
+    ## If all checks pass, then print the paths and exit
+    print("R path: " + rin.R_HOME)
+    print("R include path: " + rin.R_HOME + "/include")
+    print("TMB path: " + ro.r('find.package("TMB")')[0])
+    print("TMB headers path: " + ro.r('paste0(find.package("TMB"), "/include")')[0])
+    print("All necessary objects found")
+
+    return(0)
 
 
 class model:
@@ -78,12 +112,12 @@ class model:
         if filepath or codestr:
             self.compile(filepath=filepath, codestr=codestr, **kwargs)
 
-    def compile(self, filepath=None, codestr=None, 
+    def compile(self, filepath=None, codestr=None,
                 output_dir='tmb_tmp',
                 cc='g++',
-                R='/usr/share/R/include',
-                TMB='/usr/local/lib/R/site-library/TMB/include',
-                LR='/usr/lib/R/lib',
+                R=(rin.R_HOME + "/include"),
+                TMB=(ro.r('paste0(find.package("TMB"), "/include")')[0]),
+                LR=(rin.R_HOME + "/lib"),
                 verbose=False,
                 load=True):
         '''
@@ -98,13 +132,13 @@ class model:
             output directory for .cpp and .o
         cc : str, default 'g++'
             C++ compiler to use
-        R : str, default '/usr/share/R/include'
-            location of R shared library
+        R : str, default 'rin.R_HOME + "/include"'
+            location of R headers as picked up by rpy2 
             Note: R must be built with shared libraries
                   See http://stackoverflow.com/a/13224980/1028347
-        TMB : str, default '/usr/local/lib/R/site-library/TMB/include'
+        TMB : str, default 'ro.r('paste0(find.package("TMB"), "/include")')[0]'
             location of TMB library
-        LR : str, default '/usr/lib/R/lib'
+        LR : str, default 'rin.R_HOME + "/lib"'
             location of R's library files
         verbose : boolean, default False
             print compiler warnings
@@ -296,8 +330,8 @@ class model:
         # set obj_fun_built
         self.obj_fun_built = True
 
-    def optimize(self, opt_fun='nlminb', method='L-BFGS-B', draws=100, verbose=False, 
-        random=None, quiet=False, params=[], noparams=False, constrain=False, warning=True, **kwargs):
+    def optimize(self, opt_fun='nlminb', method='L-BFGS-B', draws=100, verbose=False,
+                 random=None, quiet=False, params=[], noparams=False, constrain=False, warning=True, **kwargs):
         '''
         Optimize the model and store results in TMB_Model.TMB.fit
         Parameters
@@ -354,8 +388,10 @@ class model:
         if quiet:
             self.R.r('sink("/dev/null")')
         self.TMB.fit = self.R.r[opt_fun](start=get_R_attr(self.TMB.model, 'par'),
-                                         objective=get_R_attr(self.TMB.model, 'fn'),
-                                         gradient=get_R_attr(self.TMB.model, 'gr'),
+                                         objective=get_R_attr(
+                                             self.TMB.model, 'fn'),
+                                         gradient=get_R_attr(
+                                             self.TMB.model, 'gr'),
                                          method=method, **kwargs)
         if quiet:
             self.R.r('sink()')
