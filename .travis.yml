@@ -13,12 +13,12 @@ cache:
 
 jobs:
   include:
-    - stage: Set up Python and R environment
+    - stage: Set up Python (conda) and R environment
       r: 3.5
       script:
         - bin/01_set_env.sh
         - bin/02_install_TMB.sh
-    - stage: Run a TMB test
+    - stage: Run TMB examples
       r: 3.5
       script:
         - bin/03_example_1.sh
