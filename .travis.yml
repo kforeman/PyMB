@@ -18,19 +18,32 @@ before_install:
 ## Cache R packages
 cache: packages
 
-## Set up conda environment, TMB and PyMB
+## Set up conda environment and PyMB
 install:
   - conda create -c conda-forge -n pymb_test -y python=3.6 numpy scipy libiconv libxml2 lxml scikit-sparse
   - source activate pymb_test
   - which -a python && pip install rpy2 && python -c "import rpy2.rinterface as rinterface"
-  - git clone https://github.com/kaskr/adcomp.git && cd adcomp && make install-metis-full && cd ..
   - cd ../PyMB && python setup.py install
 
 jobs:
   include:
-    - stage: Run PyMB tests
+    - stage: Native TMB install from CRAN and building model using native g++ and subprocess
       script:
-        - python Examples/linreg.py
+        - bash bin/01_install_TMB_from_CRAN.sh
+        - python Examples/01_linreg_native_bulid.py
+    - stage: Native TMB install from CRAN and building model using R subprocess
+      script:
+        - bash bin/01_install_TMB_from_CRAN.sh
+        - python Examples/02_linreg_R_subprocess.py
+    - stage: Source TMB install from CRAN and building model using native g++ and subprocess
+      script:
+        - bash bin/02_build_TMB_from_source.sh
+        - python Examples/01_linreg_native_bulid.py
+    - stage: Source TMB install from CRAN and building model using R subprocess
+      script:
+        - bash bin/02_build_TMB_from_source.sh
+        - python Examples/02_linreg_R_subprocess.py
+
 
 notifications:
   email:

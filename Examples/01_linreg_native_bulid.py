@@ -1,3 +1,5 @@
+
+## Script: run linear regression, using the manual flags to build the model
 import numpy as np
 import os
 
@@ -7,10 +9,10 @@ import rpy2.robjects as ro
 import rpy2.rinterface as rin
 
 # create an empty model
-m = PyMB.model(name='linreg_code')
+m = PyMB.model(name='model1')
 
 # code for a simple linear regression
-linreg_code = '''
+model1 = '''
 #include <TMB.hpp>
 template<class Type>
 Type objective_function<Type>::operator() (){
@@ -41,7 +43,7 @@ rlib = rin.R_HOME + "/lib"
 # rpy2.rinterface.R_HOME
 
 # compile the model
-m.compile(codestr=linreg_code,
+m.compile(codestr=model1,
           cc='g++',
           R=rinclude,
           TMB=tmbinclude,
