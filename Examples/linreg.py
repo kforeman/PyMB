@@ -47,7 +47,8 @@ m.compile(codestr=linreg_code,
           TMB=tmbinclude,
           LR=rlib,
           verbose=True,
-          load=True)
+          load=True,
+          use_native_compiler=False)
 
 # simulate data
 N = 100

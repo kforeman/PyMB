@@ -119,7 +119,8 @@ class model:
                 TMB=(ro.r('paste0(find.package("TMB"), "/include")')[0]),
                 LR=(rin.R_HOME + "/lib"),
                 verbose=False,
-                load=True):
+                load=True,
+                use_native_compiler=False):
         '''
         Compile TMB C++ code and load into R
         Parameters
@@ -144,6 +145,8 @@ class model:
             print compiler warnings
         load : boolean, default True
             load the model into Python after compilation
+        use_native_compiler: boolean, default False
+            compile the TMB model from an R subprocess
         '''
         # time compilation
         start = time.time()
@@ -186,44 +189,49 @@ class model:
         # TODO: skip recompiling when model has not changed
 
         # compile cpp
-        comp = '{cc} {include} {options} {f} -o {o}'.format(
-            cc=cc,
-            include='-I{R} -I{TMB}'.format(R=R, TMB=TMB),
-            options='-DNDEBUG -DTMB_SAFEBOUNDS -DLIB_UNLOAD=' +
-            'R_unload_{} -fpic -O3 -pipe -g -c'.format(
-                self.name),
-            f='{output_dir}/{name}.cpp'.format(
-                output_dir=output_dir, name=self.name),
-            o='{output_dir}/{name}.o'.format(
-                output_dir=output_dir, name=self.name))
-        try:
-            cmnd_output = subprocess.check_output(
-                comp, stderr=subprocess.STDOUT, shell=True)
-        except subprocess.CalledProcessError as exc:
-            print(comp)
-            print(exc.output)
-            raise Exception(
-                'Your TMB code could not compile. See error above.')
-        if verbose:
-            print(comp)
-            print(cmnd_output)
-        # create shared object
-        link = '{cc} {options} -o {so} {o} {link}'.format(
-            cc=cc,
-            options='-shared',
-            so='{output_dir}/{name}.so'.format(
-                output_dir=output_dir, name=self.name),
-            o='{output_dir}/{name}.o'.format(
-                output_dir=output_dir, name=self.name),
-            link='-L{LR} -lR'.format(LR=LR))
-        try:
-            cmnd_output = subprocess.check_output(
-                link, stderr=subprocess.STDOUT, shell=True)
-        except subprocess.CalledProcessError as exc:
-            print(link)
-            print(exc.output)
-            raise Exception(
-                'Your TMB code could not be linked. See error above.')
+        ## If using manual build
+        if not use_native_compiler:
+            comp = '{cc} {include} {options} {f} -o {o}'.format(
+                cc=cc,
+                include='-I{R} -I{TMB}'.format(R=R, TMB=TMB),
+                options='-DNDEBUG -DTMB_SAFEBOUNDS -DLIB_UNLOAD=' +
+                'R_unload_{} -fpic -O3 -pipe -g -c'.format(
+                    self.name),
+                f='{output_dir}/{name}.cpp'.format(
+                    output_dir=output_dir, name=self.name),
+                o='{output_dir}/{name}.o'.format(
+                    output_dir=output_dir, name=self.name))
+            try:
+                cmnd_output = subprocess.check_output(
+                    comp, stderr=subprocess.STDOUT, shell=True)
+            except subprocess.CalledProcessError as exc:
+                print(comp)
+                print(exc.output)
+                raise Exception(
+                    'Your TMB code could not compile. See error above.')
+            if verbose:
+                print(comp)
+                print(cmnd_output)
+            # create shared object
+            link = '{cc} {options} -o {so} {o} {link}'.format(
+                cc=cc,
+                options='-shared',
+                so='{output_dir}/{name}.so'.format(
+                    output_dir=output_dir, name=self.name),
+                o='{output_dir}/{name}.o'.format(
+                    output_dir=output_dir, name=self.name),
+                link='-L{LR} -lR'.format(LR=LR))
+            try:
+                cmnd_output = subprocess.check_output(
+                    link, stderr=subprocess.STDOUT, shell=True)
+            except subprocess.CalledProcessError as exc:
+                print(link)
+                print(exc.output)
+                raise Exception(
+                    'Your TMB code could not be linked. See error above.')
+        elif use_native_compiler:
+            tmb_compile_line = 'TMB::compile("' + self.filepath + '")'
+            subprocess.run(['R', '-e', tmb_compile_line ])
 
         # if a module of the same name has already been loaded,
         # must unload R entirely it seems
@@ -263,7 +271,7 @@ class model:
         if not hasattr(self, 'filepath'):
             # assume that the cpp file is in the same directory with the same name if it wasn't specified
             self.filepath = so_file.replace('.so', '.cpp')
-        self.R.r('sink("/dev/null")')
+        self.R.r('sink("/dev/null"); library(TMB)')
         self.R.r('dyn.load("{so_file}")'.format(so_file=so_file))
         self.R.r('sink()')
         self.model_loaded = True
