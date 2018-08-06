@@ -17,21 +17,21 @@ before_install:
 cache: packages
 
 
-## Set up conda environment
+## Set up conda environment and TMB
 install:
   - conda create -c conda-forge -n pymb_test -y python=3.6 numpy scipy libiconv libxml2 lxml scikit-sparse
   - source activate pymb_test
   - pip install rpy2
+  - R -e 'install.packages("Matrix",  repos="http://cran.us.r-project.org", dependencies=T)'
+  - R -e 'install.packages("TMB",  repos="http://cran.us.r-project.org", dependencies=T)'
+
 
 jobs:
   include:
-    - stage: Install TMB
+    - stage: Install PyMB and run examples
       script:
-        - bin/02_install_TMB.sh
-    - stage: Run TMB examples
-      script:
-        - bin/03_example_1.sh
-
+        - bin/01_pymb_install.sh
+        - bin/02_pymb_linreg.sh
 
 notifications:
   email:
