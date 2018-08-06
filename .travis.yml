@@ -7,30 +7,28 @@ os:
 
 
 # Setup anaconda
-install:
+before_install:
   - wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
   - chmod +x miniconda.sh
   - ./miniconda.sh -b -p /home/travis/miniconda3
   - export PATH=/home/travis/miniconda3/bin:$PATH
 
-
+## Cache R packages
 cache: packages
-cache:
-  directories:
-    - /home/travis/R-bin
-    - /home/travis/miniconda3
+
+
+## Set up conda environment
+install:
+  - conda create -c conda-forge -n pymb_test python=3.6 numpy scipy libiconv libxml2 lxml scikit-sparse
+  - source activate pymb_test
+  - pip install rpy2
 
 jobs:
   include:
-    - stage: Set up Python (conda) and R environment
-      r: 3.5
-      install: false
+    - stage: Install TMB
       script:
-        - bin/01_set_env.sh
         - bin/02_install_TMB.sh
     - stage: Run TMB examples
-      r: 3.5
-      install: false
       script:
         - bin/03_example_1.sh
 

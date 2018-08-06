@@ -3,7 +3,7 @@
 set -e # Exit with nonzero exit code if anything fails
 
 ## Check R
-export PATH="$HOME/miniconda3/bin:$PATH"
+# export PATH="$HOME/miniconda3/bin:$PATH"
 which -a python
 which -a R
 

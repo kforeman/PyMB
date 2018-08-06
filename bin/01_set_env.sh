@@ -28,5 +28,6 @@ set -e # Exit with nonzero exit code if anything fails
 # pip install rpy2
 
 ## Check R and Python versions
+export PATH="$HOME/miniconda3/bin:$PATH"
 which -a python
 which -a R
