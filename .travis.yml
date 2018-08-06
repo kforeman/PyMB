@@ -14,6 +14,7 @@ before_install:
   - export PATH=/home/travis/miniconda3/bin:$PATH
   - export LD_LIBRARY_PATH=/home/travis/R-bin/lib/R/lib:/home/travis/miniconda3/lib:$LD_LIBRARY_PATH
   - R -e 'install.packages(c("Matrix", "RcppEigen", "numDeriv", "TMB"),  repos="http://cran.us.r-project.org", dependencies=T)'
+  - R -e 'TMB::runExample('randomregression')
 
 ## Cache R packages
 cache: packages
