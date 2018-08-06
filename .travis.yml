@@ -11,8 +11,6 @@ cache:
     - /home/travis/R-bin/
     - /home/travis/miniconda/
 
-
-
 jobs:
   include:
     - stage: Set up Python and R environment
@@ -24,7 +22,6 @@ jobs:
       r: 3.5
       script:
         - bin/03_example_1.sh
-
 
 
 notifications:
