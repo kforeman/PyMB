@@ -5,6 +5,13 @@ language: r
 os:
   - linux
 
+cache: 
+  packages
+  directories:
+    - /home/travis/R-bin/
+    - /home/travis/miniconda/
+
+
 
 jobs:
   include:
