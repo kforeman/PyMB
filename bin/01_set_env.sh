@@ -13,6 +13,7 @@ conda install -c conda-forge  -y numpy scipy libiconv libxml2 lxml scikit-sparse
 ## Install rpy2
 pip install rpy2
 
-## Check R
+## Check R and Python versions
+which -a python
 which -a R
 R -e 'sessionInfo()'
