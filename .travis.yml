@@ -12,7 +12,7 @@ before_install:
   - chmod +x miniconda.sh
   - ./miniconda.sh -b -p /home/travis/miniconda3
   - export PATH=/home/travis/miniconda3/bin:$PATH
-  - export LD_LIBRARY_PATH=/home/travis/R-bin/lib:/home/travis/miniconda3/lib:$LD_LIBRARY_PATH
+  - export LD_LIBRARY_PATH=/home/travis/R-bin/lib/R/lib:/home/travis/miniconda3/lib:$LD_LIBRARY_PATH
   - R -e 'sessionInfo()'
   - R -e 'install.packages(c("Matrix", "TMB"),  repos="http://cran.us.r-project.org", dependencies=T)'
 
