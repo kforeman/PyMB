@@ -12,19 +12,19 @@ before_install:
   - chmod +x miniconda.sh
   - ./miniconda.sh -b -p /home/travis/miniconda3
   - export PATH=/home/travis/miniconda3/bin:$PATH
+  - export LD_LIBRARY_PATH=/home/travis/R-bin/lib:/home/travis/miniconda3/lib:$LD_LIBRARY_PATH
+  - R -e 'sessionInfo()'
+  - R -e 'install.packages(c("Matrix", "TMB"),  repos="http://cran.us.r-project.org", dependencies=T)'
 
 ## Cache R packages
 cache: packages
-
 
 ## Set up conda environment, TMB and PyMB
 install:
   - conda create -c conda-forge -n pymb_test -y python=3.6 numpy scipy libiconv libxml2 lxml scikit-sparse
   - source activate pymb_test
-  - which -a python && pip install rpy2
-  - R -e 'install.packages("Matrix",  repos="http://cran.us.r-project.org", dependencies=T)'
-  - R -e 'install.packages("TMB",  repos="http://cran.us.r-project.org", dependencies=T)'
-  - cd ../PyMB && python setup.py install && python -c "import rpy2.rinterface as rinterface"
+  - which -a python && pip install rpy2 && python -c "import rpy2.rinterface as rinterface"
+  - cd ../PyMB && python setup.py install
 
 
 jobs:
