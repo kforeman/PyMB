@@ -2,7 +2,8 @@
 set -e # Exit with nonzero exit code if anything fails
 
 ls ~/
-export PATH="$HOME/miniconda/bin:$PATH"
+ls ../
+export PATH="$HOME/miniconda3/bin:$PATH"
 which -a python
 which -a R
 
