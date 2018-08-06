@@ -17,7 +17,6 @@ jobs:
         - bin/02_install_TMB.sh
     - stage: Run a TMB test
       r: 3.5
-      install: true
       script:
         - bin/03_example_1.sh
 
