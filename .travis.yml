@@ -23,7 +23,7 @@ install:
   - conda create -c conda-forge -n pymb_test -y python=3.6 numpy scipy libiconv libxml2 lxml scikit-sparse
   - source activate pymb_test
   - which -a python && pip install rpy2 && python -c "import rpy2.rinterface as rinterface"
-  - cd /opt && git clone https://github.com/kaskr/adcomp.git && cd adcomp && make install-metis-full
+  - git clone https://github.com/kaskr/adcomp.git && cd adcomp && make install-metis-full && cd ..
   - cd ../PyMB && python setup.py install
 
 jobs:
