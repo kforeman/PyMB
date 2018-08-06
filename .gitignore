@@ -5,3 +5,6 @@ tmb_tmp/
 .ipynb_checkpoints/
 .DS_Store
 .idea
+PyMB.egg-info/
+build/
+dist/
