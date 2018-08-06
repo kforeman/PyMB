@@ -10,8 +10,7 @@ export PATH="$HOME/miniconda/bin:$PATH"
 ## Install numpy, scipy and and dependencies on Python side
 conda install -c conda-forge  -y numpy scipy libiconv libxml2 lxml scikit-sparse
 
-## Install R and rpy2
-conda install -c r -y r-base=3.5.0
+## Install rpy2
 pip install rpy2
 
 ## Check R
