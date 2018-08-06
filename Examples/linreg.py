@@ -4,7 +4,7 @@ import os
 
 import PyMB
 import rpy2.robjects as ro
-
+import rpy2.rinterface as rin
 
 # create an empty model
 m = PyMB.model(name='linreg_code')
@@ -33,8 +33,8 @@ Type objective_function<Type>::operator() (){
 
 # Get the necessary paths to compile TMB code
 tmbinclude = ro.r('paste0(find.package("TMB"), "/include")')[0]
-rinclude = rpy2.rinterface.R_HOME + "/include"
-rlib = rpy2.rinterface.R_HOME + "/lib"
+rinclude = rin.R_HOME + "/include"
+rlib = rin.R_HOME + "/lib"
 
 # rpy2.rinterface.R_HOME
 
