@@ -1,3 +1,6 @@
+#!/bin/bash
+set -e # Exit with nonzero exit code if anything fails
+
 
 ## Install Miniconda3
 wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
