@@ -5,10 +5,6 @@ language: python
 python:
   - "3.6"
 
-before_install:
-  - sudo apt-get update
-  - export PATH="$HOME/miniconda/bin:$PATH"
-
 apt_packages:
   - wget
   - curl
