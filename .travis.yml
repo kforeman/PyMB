@@ -19,7 +19,7 @@ cache: packages
 
 ## Set up conda environment
 install:
-  - conda create -c conda-forge -n pymb_test python=3.6 numpy scipy libiconv libxml2 lxml scikit-sparse
+  - conda create -c conda-forge -n pymb_test -y python=3.6 numpy scipy libiconv libxml2 lxml scikit-sparse
   - source activate pymb_test
   - pip install rpy2
 
