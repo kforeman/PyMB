@@ -5,8 +5,8 @@ language: r
 os:
   - linux
 
-cache: 
-  packages
+cache: packages
+cache:
   directories:
     - /home/travis/R-bin/
     - /home/travis/miniconda/
