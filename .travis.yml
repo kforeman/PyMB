@@ -17,20 +17,20 @@ before_install:
 cache: packages
 
 
-## Set up conda environment and TMB
+## Set up conda environment, TMB and PyMB
 install:
   - conda create -c conda-forge -n pymb_test -y python=3.6 numpy scipy libiconv libxml2 lxml scikit-sparse
   - source activate pymb_test
-  - pip install rpy2
-  - R -e 'install.packages("Matrix",  repos="http://cran.us.r-project.org", dependencies=T)'
-  - R -e 'install.packages("TMB",  repos="http://cran.us.r-project.org", dependencies=T)'
+  - conda install -c r -y r-base rpy2
+  - /home/travis/miniconda3/bin/R -e 'install.packages("Matrix",  repos="http://cran.us.r-project.org", dependencies=T)'
+  - /home/travis/miniconda3/bin/R -e 'install.packages("TMB",  repos="http://cran.us.r-project.org", dependencies=T)'
+  - cd ../PyMB && python setup.py install && python -c "import rpy2.rinterface as rinterface"
 
 
 jobs:
   include:
-    - stage: Install PyMB and run examples
+    - stage: Run PyMB tests
       script:
-        - bin/01_pymb_install.sh
         - bin/02_pymb_linreg.sh
 
 notifications:
