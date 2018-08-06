@@ -5,29 +5,32 @@ language: r
 os:
   - linux
 
-cache: packages
-cache:
-  directories:
-    - /home/travis/R-bin
-    - /home/travis/miniconda
 
 # Setup anaconda
-before_script:
+install:
   - wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
   - chmod +x miniconda.sh
   - ./miniconda.sh -b -p /home/travis/miniconda3
   - export PATH=/home/travis/miniconda3/bin:$PATH
 
 
+cache: packages
+cache:
+  directories:
+    - /home/travis/R-bin
+    - /home/travis/miniconda3
+
 jobs:
   include:
     - stage: Set up Python (conda) and R environment
       r: 3.5
+      install: false
       script:
         - bin/01_set_env.sh
         - bin/02_install_TMB.sh
     - stage: Run TMB examples
       r: 3.5
+      install: false
       script:
         - bin/03_example_1.sh
 
