@@ -50,7 +50,7 @@ m.compile(codestr=model2,
           LR=rlib,
           verbose=True,
           load=True,
-          use_native_compiler=False)
+          use_native_compiler=True)
 
 # simulate data
 N = 100
