@@ -2,38 +2,19 @@ sudo: required
 
 language: r
 
-
-
-apt_packages:
-  - wget
-  - curl
-  - bzip2
-  - ca-certificates
-  - libglib2.0-0
-  - libxext6
-  - libsm6
-  - libxrender1
-  - git
-  - gcc
-  - g++
-  - libreadline-dev
-  - tar
-  - build-essential
-
 os:
   - linux
 
 cache: packages
 
+
 jobs:
   include:
     - stage: Set up Python and R environment
       r: 3.5
-      install: 
+      script:
         - bin/01_set_env.sh
         - bin/02_install_TMB.sh
-      script:
-        true
     - stage: Run a TMB test
       r: 3.5
       script:
