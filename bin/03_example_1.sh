@@ -6,5 +6,5 @@ export PATH="$HOME/miniconda/bin:$PATH"
 which -a python
 which -a R
 
-R -e 'library(TMB); runExample("randomregression");'
+# R -e 'library(TMB); runExample("randomregression");'
 

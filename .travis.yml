@@ -5,14 +5,12 @@ language: r
 os:
   - linux
 
-cache: packages
-
 
 jobs:
   include:
     - stage: Set up Python and R environment
       r: 3.5
-      install:
+      script:
         - bin/01_set_env.sh
         - bin/02_install_TMB.sh
     - stage: Run a TMB test
