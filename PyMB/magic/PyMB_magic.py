@@ -100,7 +100,8 @@ def import_pymb_magic():
                 code += '}\n'
 
             # compile model
-            model.compile(codestr=code, output_dir=args.OUTPUT_DIR, cc=args.CCOMPILER, R=args.R_DIR, TMB=args.TMB_DIR, LR=args.R_LIB, verbose=args.VERBOSE)
+            model.compile(codestr=code, output_dir=args.OUTPUT_DIR, cc=args.CCOMPILER, R=args.R_DIR,
+                          TMB=args.TMB_DIR, LR=args.R_LIB, verbose=args.VERBOSE)
 
             # print if verbose
             if args.VERBOSE == True:
