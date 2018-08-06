@@ -120,7 +120,7 @@ class model:
                 LR=(rin.R_HOME + "/lib"),
                 verbose=False,
                 load=True,
-                use_native_compiler=False):
+                use_R_compiler=False):
         '''
         Compile TMB C++ code and load into R
         Parameters
@@ -145,7 +145,7 @@ class model:
             print compiler warnings
         load : boolean, default True
             load the model into Python after compilation
-        use_native_compiler: boolean, default False
+        use_R_compiler: boolean, default False
             compile the TMB model from an R subprocess
         '''
         # time compilation
@@ -190,7 +190,7 @@ class model:
 
         # compile cpp
         ## If using manual build
-        if not use_native_compiler:
+        if not use_R_compiler:
             comp = '{cc} {include} {options} {f} -o {o}'.format(
                 cc=cc,
                 include='-I{R} -I{TMB}'.format(R=R, TMB=TMB),
@@ -229,7 +229,7 @@ class model:
                 print(exc.output)
                 raise Exception(
                     'Your TMB code could not be linked. See error above.')
-        elif use_native_compiler:
+        elif use_R_compiler:
             tmb_compile_line = 'TMB::compile("' + self.filepath + '")'
             subprocess.run(['R', '-e', tmb_compile_line ])
 

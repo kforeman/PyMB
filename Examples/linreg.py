@@ -65,7 +65,7 @@ if __name__ == '__main__':
               LR=rlib,
               verbose=True,
               load=True,
-              use_native_compiler=use_nat_comp)
+              use_R_compiler=use_nat_comp)
 
     # simulate data
     N = 100
