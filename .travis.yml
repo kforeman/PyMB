@@ -13,8 +13,7 @@ before_install:
   - ./miniconda.sh -b -p /home/travis/miniconda3
   - export PATH=/home/travis/miniconda3/bin:$PATH
   - export LD_LIBRARY_PATH=/home/travis/R-bin/lib/R/lib:/home/travis/miniconda3/lib:$LD_LIBRARY_PATH
-  - R -e 'install.packages(c("Matrix", "RcppEigen", "numDeriv", "TMB"),  repos="http://cran.us.r-project.org", dependencies=T)'
-  - R -e "TMB::runExample('randomregression')"
+  - R -e 'install.packages(c("Matrix", "RcppEigen", "numDeriv"),  repos="http://cran.us.r-project.org", dependencies=T)'
 
 ## Cache R packages
 cache: packages
@@ -24,8 +23,8 @@ install:
   - conda create -c conda-forge -n pymb_test -y python=3.6 numpy scipy libiconv libxml2 lxml scikit-sparse
   - source activate pymb_test
   - which -a python && pip install rpy2 && python -c "import rpy2.rinterface as rinterface"
+  - cd /opt && git clone https://github.com/kaskr/adcomp.git && cd adcomp && make install-metis-full
   - cd ../PyMB && python setup.py install
-
 
 jobs:
   include:

@@ -33,8 +33,8 @@ Type objective_function<Type>::operator() (){
 
 # Get the necessary paths to compile TMB code
 tmbinclude = ro.r('paste0(find.package("TMB"), "/include")')[0]
-eigeninclude = ro.r('paste0(find.package("RcppEigen"), "/include")')[0]
-tmbinclude = tmbinclude + ' -I' + eigeninclude
+# eigeninclude = ro.r('paste0(find.package("RcppEigen"), "/include")')[0]
+# tmbinclude = tmbinclude + ' -I' + eigeninclude
 rinclude = rin.R_HOME + "/include"
 rlib = rin.R_HOME + "/lib"
 
