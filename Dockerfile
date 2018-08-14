@@ -23,7 +23,7 @@ RUN apt-get update --fix-missing && \
 
 ## Install Python dependencies
 ## NOTE: DO NOT install rpy2 from conda-forge, got issues
-RUN conda install -c conda-forge -y numpy scipy && \
+RUN conda install -c conda-forge -y numpy scipy \
     scikit-sparse libiconv libxml2 lxml
 
 ## Install R and rpy2
