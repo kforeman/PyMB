@@ -11,7 +11,6 @@ interactive_requirements = [
 setup(
     name='PyMB',
     version=VERSION,
-    #    packages=['', 'PyMB.magic'],
     packages=find_packages(),
     url='https://github.com/kforeman/PyMB',
     license='GNU General Public License v2.0',
@@ -26,6 +25,17 @@ setup(
     ],
     extras_require={
         'interactive': interactive_requirements,
-    }
-
+    },
+    classifiers=(
+        "Intended Audience :: Developers",
+        "Intended Audience :: Science/Research",
+        "Programming Language :: R",
+        "Programming Language :: Python :: 2.7",
+        "Programming Language :: Python :: 3",
+        "License :: GNU General Public License v2.0",
+        "Natural Language :: English",
+        "Operating System :: POSIX",
+        "Operating System :: Unix",
+        "Topic :: Scientific/Engineering",
+    ),
 )
