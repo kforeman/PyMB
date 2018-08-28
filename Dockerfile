@@ -23,22 +23,24 @@ RUN apt-get update --fix-missing && \
 
 ## Install Python dependencies
 ## NOTE: DO NOT install rpy2 from conda-forge, got issues
-RUN conda install -c conda-forge -y numpy scipy \
-    scikit-sparse libiconv libxml2 lxml
+RUN pip install numpy scipy
 
 ## Install R and rpy2
 RUN conda install -c r -y \
-    r-base=3.5.0 && \
-    pip install rpy2
+    r-base=3.5.0 libiconv libxml2 lxml  && \
+    pip install rpy2 
 
+RUN conda install -c conda-forge -y scikit-sparse
 
 ## Build TMB and it's dependencies
-RUN R -e 'install.packages(c("Matrix", "numDeriv", "RcppEigen"),  repos="http://cran.us.r-project.org", dependencies=T)' && \
-    cd /opt && \
-    git clone https://github.com/kaskr/adcomp.git && cd adcomp && \
-    make install-metis-full
+RUN R -e 'install.packages(c("Matrix", "numDeriv", "RcppEigen", "TMB"),  repos="http://cran.us.r-project.org", dependencies=T)' 
+    # && \
+    # cd /opt && \
+    # git clone https://github.com/kaskr/adcomp.git && cd adcomp && \
+    # make install-metis-full
 
 ## Install PyMB
 RUN cd /opt && \
-    git clone https://github.com/kforeman/PyMB.git && \
+    git clone https://github.com/sadatnfs/PyMB.git && \
     cd PyMB && python setup.py install
+

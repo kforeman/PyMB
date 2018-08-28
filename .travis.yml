@@ -30,19 +30,19 @@ jobs:
     - stage: Native TMB install from CRAN and building model using native g++ and subprocess
       script:
         - bash bin/01_install_TMB_from_CRAN.sh
-        - python Examples/linreg.py --use_eigen_inc=True --use_native_compiler=False
+        - python Examples/linreg.py --use_eigen_inc=1 --use_native_compiler=0
     - stage: Native TMB install from CRAN and building model using R subprocess
       script:
         - bash bin/01_install_TMB_from_CRAN.sh
-        - python Examples/linreg.py --use_eigen_inc=True --use_native_compiler=True
+        - python Examples/linreg.py --use_eigen_inc=1 --use_native_compiler=1
     - stage: Source TMB build and building model using native g++ and subprocess
       script:
         - bash bin/02_build_TMB_from_source.sh
-        - python Examples/linreg.py --use_eigen_inc=False --use_native_compiler=False
+        - python Examples/linreg.py --use_eigen_inc=0 --use_native_compiler=0
     - stage: Source TMB build and building model using R subprocess
       script:
         - bash bin/02_build_TMB_from_source.sh
-        - python Examples/linreg.py --use_eigen_inc=False --use_native_compiler=True
+        - python Examples/linreg.py --use_eigen_inc=0 --use_native_compiler=1
 
 
 notifications:
