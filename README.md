@@ -1,7 +1,7 @@
 # PyMB
 Python Model Builder - fit statistical models using algorithmic differentiation
 
-[![Build Status](https://travis-ci.org/sadatnfs/PyMB.svg?branch=master)](https://travis-ci.org/sadatnfs/PyMB)
+[![Build Status](https://travis-ci.com/sadatnfs/PyMB.svg?branch=master)](https://travis-ci.com/sadatnfs/PyMB)
 
 
 ## Concept
