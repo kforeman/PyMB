@@ -21,7 +21,7 @@ setup(
         numpy.get_include(),
     ],
     install_requires=[
-        'numpy', 'rpy2', 'scipy', 'scikit-sparse',
+        'numpy', 'rpy2<=2.9.5', 'scipy', 'scikit-sparse',
     ],
     extras_require={
         'interactive': interactive_requirements,
