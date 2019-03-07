@@ -1,6 +1,9 @@
 # PyMB
 Python Model Builder - fit statistical models using algorithmic differentiation
 
+[![Build Status](https://travis-ci.com/sadatnfs/PyMB.svg?branch=master)](https://travis-ci.com/sadatnfs/PyMB)
+
+
 ## Concept
 PyMB uses [algorithmic differentiation](http://en.wikipedia.org/wiki/Automatic_differentiation) from 
 [CppAD](http://www.coin-or.org/CppAD/) to compute derivatives of objective functions, allowing users to quickly find 
@@ -21,16 +24,24 @@ A demo [iPython notebook](http://ipython.org/notebook.html) can be found at
 [Examples/Linear Regression.ipynb](Examples/Linear Regression.ipynb) or an online version can be viewed [here](http://nbviewer.ipython.org/github/kforeman/PyMB/blob/master/Examples/Linear%20Regression%20-%20Magic.ipynb).
 
 ## Installation
-An example Dockerfile that will create a working PyMB install can be found [here](https://gist.github.com/kforeman/4cd9495f0222b6fbfa79ebcee993ae78).
+An example Dockerfile that will create a working PyMB install can be found [here](Dockerfile).
+
+The following can be run to install PyMB directly from the GitHub repo:
+```sh
+pip install git+https://github.com/sadatnfs/PyMB.git
+```
+
+#### Note
+The user must have a working installation of R (http://www.r-project.org/) and the TMB package (https://github.com/kaskr/adcomp), such that R is available on the PATH. Possibilities include setting up a conda environment with R installed and activating it, or installing R from source.
+
 #### Dependencies
 * [R](http://www.r-project.org/)
 * [TMB](https://github.com/kaskr/adcomp)
 * [rpy2](http://rpy.sourceforge.net/)
 * [numpy](http://www.numpy.org/)
+* [scipy](https://scipy.org/)
+* [sksparse](https://github.com/scikit-sparse/scikit-sparse)
 
-#### Importing
-`setup.py` has not yet been added. For now simply `git clone git@github.com:kforeman/PyMB.git` into your working directory, 
-startup Python or an iPython notebook, and `import PyMB`.
 
 ## License (GPLv2)
     PyMB - Python Model Builder

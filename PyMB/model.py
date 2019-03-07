@@ -1,9 +1,28 @@
-import numpy as np
+
+from pprint import pprint
+import os
+import re
+import readline
+import shutil
+import subprocess
 import time
 import warnings
-import os
-import readline
+
+import numpy as np
+from rpy2.robjects.packages import importr
+from rpy2 import robjects as ro
+import rpy2.rinterface as rin
+import rpy2.robjects.numpy2ri
 from scipy.sparse import csc_matrix
+from scipy.sparse.linalg import spsolve
+try:
+    from sksparse.cholmod import cholesky
+except:
+    from scikits.sparse.cholmod import cholesky
+
+
+__all__ = ['get_R_attr', 'check_R_TMB', 'model']
+
 
 def get_R_attr(obj, attr):
     '''
@@ -11,6 +30,44 @@ def get_R_attr(obj, attr):
     e.g. get_R_attr(myModel.TMB.model, 'hessian') would return the equivalent of model$hessian
     '''
     return obj[obj.names.index(attr)]
+
+
+def check_R_TMB():
+    '''
+    Check whether R and TMB installations and paths are available
+    '''
+
+    # Start with R, but this is sort of circular, since we required rpy2
+    if rin.R_HOME is None:
+        raise Exception("R installation not found")
+
+    # Check for R headers
+    if (not 'R.h' in os.listdir(rin.R_HOME + "/include")):
+        raise Exception("R.h not found")
+
+    # Find TMB package
+    if ro.r('find.package("TMB")') is None:
+        raise Exception("TMB package doesn't exist in this R installation")
+
+    # Find necessary TMB headers
+    if not 'TMB.hpp' in os.listdir(ro.r('paste0(find.package("TMB"), "/include")')[0]):
+        raise Exception("TMB headers not found in include directory. " +
+                        "Possible bad installation?")
+
+    # Finally, check for the R SO/dynlib:
+    if (not 'libR.dylib' in os.listdir(rin.R_HOME + "/lib")) & (not 'libR.so' in os.listdir(rin.R_HOME + "/lib")):
+        raise Exception("R shared libraries not found")
+
+    # If all checks pass, then print the paths and exit
+    print("R path: " + rin.R_HOME)
+    print("R include path: " + rin.R_HOME + "/include")
+    print("TMB path: " + ro.r('find.package("TMB")')[0])
+    print("TMB headers path: " +
+          ro.r('paste0(find.package("TMB"), "/include")')[0])
+    print("All necessary objects found")
+
+    return(0)
+
 
 class model:
     def __init__(self, name=None, filepath=None, codestr=None, **kwargs):
@@ -35,18 +92,16 @@ class model:
                 raise Exception('"name" cannot contain hyphens.')
 
         # set model name
-        self.name = name if name else 'TMB_{}'.format(np.random.randint(1e10,9e10))
+        self.name = name if name else 'TMB_{}'.format(
+            np.random.randint(1e10, 9e10))
 
         # initiate R session
-        from rpy2 import robjects as ro
         self.R = ro
 
         # turn on numpy to R conversion
-        import rpy2.robjects.numpy2ri
         rpy2.robjects.numpy2ri.activate()
 
         # create TMB link
-        from rpy2.robjects.packages import importr
         self.TMB = importr('TMB')
         importr('Matrix')
 
@@ -58,9 +113,15 @@ class model:
         if filepath or codestr:
             self.compile(filepath=filepath, codestr=codestr, **kwargs)
 
-    def compile(self, filepath=None, codestr=None, output_dir='tmb_tmp',
-        cc='g++', R='/usr/share/R/include',
-        TMB='/usr/local/lib/R/site-library/TMB/include', LR='/usr/lib/R/lib', verbose=False, load=True):
+    def compile(self, filepath=None, codestr=None,
+                output_dir='tmb_tmp',
+                cc='g++',
+                R=(rin.R_HOME + "/include"),
+                TMB=(ro.r('paste0(find.package("TMB"), "/include")')[0]),
+                LR=(rin.R_HOME + "/lib"),
+                verbose=False,
+                load=True,
+                use_R_compiler=False):
         '''
         Compile TMB C++ code and load into R
         Parameters
@@ -73,18 +134,20 @@ class model:
             output directory for .cpp and .o
         cc : str, default 'g++'
             C++ compiler to use
-        R : str, default '/usr/share/R/include'
-            location of R shared library
+        R : str, default 'rin.R_HOME + "/include"'
+            location of R headers as picked up by rpy2 
             Note: R must be built with shared libraries
                   See http://stackoverflow.com/a/13224980/1028347
-        TMB : str, default '/usr/local/lib/R/site-library/TMB/include'
+        TMB : str, default 'ro.r('paste0(find.package("TMB"), "/include")')[0]'
             location of TMB library
-        LR : str, default '/usr/lib/R/lib'
+        LR : str, default 'rin.R_HOME + "/lib"'
             location of R's library files
-	    verbose : boolean, default False
+        verbose : boolean, default False
             print compiler warnings
         load : boolean, default True
             load the model into Python after compilation
+        use_R_compiler: boolean, default False
+            compile the TMB model from an R subprocess
         '''
         # time compilation
         start = time.time()
@@ -99,81 +162,106 @@ class model:
 
         # if given just a filepath, copy the code into the output directory
         if filepath:
-            self.filepath = os.path.join(output_dir, '{name}.cpp'.format(name=self.name))
-            import shutil
+            self.filepath = os.path.join(
+                output_dir, '{name}.cpp'.format(name=self.name))
             shutil.copy(filepath, self.filepath)
             if codestr:
-                warnings.warn('Both filepath and codestr specified. Ignoring codestr.')
+                warnings.warn(
+                    'Both filepath and codestr specified. Ignoring codestr.')
 
         # otherwise write code to file
         elif codestr:
-            self.filepath = '{output_dir}/{name}.cpp'.format(output_dir=output_dir, name=self.name)
+            self.filepath = '{output_dir}/{name}.cpp'.format(
+                output_dir=output_dir, name=self.name)
 
             # only rewrite cpp if identical code found
-            if os.path.isfile(self.filepath) == False or file(self.filepath, 'r').read() != codestr:
+            if os.path.isfile(self.filepath) == False or \
+                    open(self.filepath, 'r').read() != codestr:
                 print('Saving model to {}.'.format(self.filepath))
-                with file(self.filepath, 'w') as f:
+                with open(self.filepath, 'w') as f:
                     f.write(codestr)
             else:
                 print('Using {}.'.format(self.filepath))
 
         # compile the model
-        # NOTE: cannot just call TMB.compile unfortunately - something about shared libraries not being hooked up correctly inside of embedded R sessions
+        # NOTE: cannot just call TMB.compile unfortunately -
+        # something about shared libraries
+        # not being hooked up correctly inside of embedded R sessions
         # TODO: skip recompiling when model has not changed
-        import subprocess
-        from pprint import pprint
-        # compile cpp
-        comp = '{cc} {include} {options} {f} -o {o}'.format(
-            cc=cc,
-            include='-I{R} -I{TMB}'.format(R=R, TMB=TMB),
-            options='-DNDEBUG -DTMB_SAFEBOUNDS -DLIB_UNLOAD=R_unload_{} -fpic -O3 -pipe -g -c'.format(self.name),
-            f='{output_dir}/{name}.cpp'.format(output_dir=output_dir, name=self.name),
-            o='{output_dir}/{name}.o'.format(output_dir=output_dir, name=self.name))
-        try:
-            cmnd_output = subprocess.check_output(comp, stderr=subprocess.STDOUT, shell=True)
-        except subprocess.CalledProcessError as exc:
-            print(comp)
-            print(exc.output)
-            raise Exception('Your TMB code could not compile. See error above.')
-        if verbose:
-            print(comp)
-            print(cmnd_output)
-        # create shared object
-        link = '{cc} {options} -o {so} {o} {link}'.format(
-            cc=cc,
-            options='-shared',
-            so='{output_dir}/{name}.so'.format(output_dir=output_dir, name=self.name),
-            o='{output_dir}/{name}.o'.format(output_dir=output_dir, name=self.name),
-            link='-L{LR} -lR'.format(LR=LR))
-        try:
-            cmnd_output = subprocess.check_output(link, stderr=subprocess.STDOUT, shell=True)
-        except subprocess.CalledProcessError as exc:
-            print(link)
-            print(exc.output)
-            raise Exception('Your TMB code could not be linked. See error above.')
 
-        # if a module of the same name has already been loaded, must unload R entirely it seems
+        # compile cpp
+        # If using manual build
+        if not use_R_compiler:
+            comp = '{cc} {include} {options} {f} -o {o}'.format(
+                cc=cc,
+                include='-I{R} -I{TMB}'.format(R=R, TMB=TMB),
+                options='-DNDEBUG -DTMB_SAFEBOUNDS -DLIB_UNLOAD=' +
+                'R_unload_{} -fpic -O3 -pipe -g -c'.format(
+                    self.name),
+                f='{output_dir}/{name}.cpp'.format(
+                    output_dir=output_dir, name=self.name),
+                o='{output_dir}/{name}.o'.format(
+                    output_dir=output_dir, name=self.name))
+            try:
+                cmnd_output = subprocess.check_output(
+                    comp, stderr=subprocess.STDOUT, shell=True)
+            except subprocess.CalledProcessError as exc:
+                print(comp)
+                print(exc.output)
+                raise Exception(
+                    'Your TMB code could not compile. See error above.')
+            if verbose:
+                print(comp)
+                print(cmnd_output)
+            # create shared object
+            link = '{cc} {options} -o {so} {o} {link}'.format(
+                cc=cc,
+                options='-shared',
+                so='{output_dir}/{name}.so'.format(
+                    output_dir=output_dir, name=self.name),
+                o='{output_dir}/{name}.o'.format(
+                    output_dir=output_dir, name=self.name),
+                link='-L{LR} -lR'.format(LR=LR))
+            try:
+                cmnd_output = subprocess.check_output(
+                    link, stderr=subprocess.STDOUT, shell=True)
+            except subprocess.CalledProcessError as exc:
+                print(link)
+                print(exc.output)
+                raise Exception(
+                    'Your TMB code could not be linked. See error above.')
+        elif use_R_compiler:
+            tmb_compile_line = 'TMB::compile("' + self.filepath + '")'
+            subprocess.run(['R', '-e', tmb_compile_line])
+
+        # if a module of the same name has already been loaded,
+        # must unload R entirely it seems
         """
-        TODO: fix this so R doesn't have to be restarted, potentially losing things the user has already loaded into R
+        TODO: fix this so R doesn't have to be restarted, potentially 
+        losing things the user has already loaded into R
         judging by https://github.com/kaskr/adcomp/issues/27 this should work:
-        self.R.r('try(dyn.unload("{output_dir}/{name}.so"), silent=TRUE)'.format(output_dir=output_dir, name=self.name))
+        self.R.r('try(dyn.unload("{output_dir}/{name}.so"), silent=TRUE)'.format(
+        output_dir=output_dir, name=self.name))
         but it doesn't - gives odd vector errors when trying to optimize
         """
-        if self.name in [str(get_R_attr(i, 'name')[0]) for i in self.R.r('getLoadedDLLs()')]:
-            warnings.warn('A model has already been loaded into TMB. Restarting R and reloading model to prevent conflicts.')
+        if self.name in [str(get_R_attr(i, 'name')[0])
+                         for i in self.R.r('getLoadedDLLs()')]:
+            warnings.warn('A model has already been loaded into TMB.')
+            warnings.warn(
+                'Restarting R and reloading model to prevent conflicts.')
             self.R.r('sink("/dev/null")')
-            self.R.r('try(dyn.unload("{output_dir}/{name}.so"), silent=TRUE)'.format(output_dir=output_dir, name=self.name))
+            self.R.r('try(dyn.unload("{output_dir}/{name}.so"), silent=TRUE)'.format(
+                output_dir=output_dir, name=self.name))
             self.R.r('sink()')
             del self.R
-            from rpy2 import robjects as ro
             self.R = ro
             del self.TMB
-            from rpy2.robjects.packages import importr
             self.TMB = importr('TMB')
 
         # load the model into R
         if load:
-            self.load_model(so_file='{output_dir}/{name}.so'.format(output_dir=output_dir, name=self.name))
+            self.load_model(
+                so_file='{output_dir}/{name}.so'.format(output_dir=output_dir, name=self.name))
 
         # output time
         print('Compiled in {:.1f}s.\n'.format(time.time()-start))
@@ -183,17 +271,16 @@ class model:
             so_file = 'tmb_tmp/{name}.so'.format(name=self.name)
         if not hasattr(self, 'filepath'):
             # assume that the cpp file is in the same directory with the same name if it wasn't specified
-            self.filepath = so_file.replace('.so','.cpp')
-        self.R.r('sink("/dev/null")')
+            self.filepath = so_file.replace('.so', '.cpp')
+        self.R.r('sink("/dev/null"); library(TMB)')
         self.R.r('dyn.load("{so_file}")'.format(so_file=so_file))
         self.R.r('sink()')
         self.model_loaded = True
         self.dll = os.path.splitext(os.path.basename(so_file))[0]
 
     def check_inputs(self, thing):
-        import re
         missing = []
-        with file(self.filepath) as f:
+        with open(self.filepath) as f:
             for l in f:
                 if re.match('^PARAMETER' if thing == 'init' else '^{}'.format(thing.upper()), l.strip()):
                     i = re.search(r"\(([A-Za-z0-9_]+)\)", l.strip()).group(1)
@@ -218,7 +305,8 @@ class model:
         '''
         # first check to make sure everything necessary has been loaded
         if not hasattr(self, 'model_loaded'):
-            raise Exception('Model not yet compiled/loaded. See TMB_model.compile().')
+            raise Exception(
+                'Model not yet compiled/loaded. See TMB_model.compile().')
         self.check_inputs('data')
         self.check_inputs('init')
 
@@ -226,7 +314,8 @@ class model:
         if hasattr(self, 'obj_fun_built'):
             try:
                 del self.TMB.model
-                self.R.r('dyn.load("{filepath}")'.format(filepath=self.filepath.replace('.cpp','.so')))
+                self.R.r('dyn.load("{filepath}")'.format(
+                    filepath=self.filepath.replace('.cpp', '.so')))
             except:
                 pass
 
@@ -244,14 +333,14 @@ class model:
 
         # build the objective function
         self.TMB.model = self.TMB.MakeADFun(data=self.R.ListVector(self.data),
-            parameters=self.R.ListVector(self.init), hessian=hessian, 
-            DLL=self.dll, **kwargs)
+                                            parameters=self.R.ListVector(self.init), hessian=hessian,
+                                            DLL=self.dll, **kwargs)
 
         # set obj_fun_built
         self.obj_fun_built = True
 
-
-    def optimize(self, opt_fun='nlminb', method='L-BFGS-B', draws=100, verbose=False, random=None, quiet=False, params=[], noparams=False, constrain=False, warning=True, **kwargs):
+    def optimize(self, opt_fun='nlminb', method='L-BFGS-B', draws=100, verbose=False,
+                 random=None, quiet=False, params=[], noparams=False, constrain=False, warning=True, **kwargs):
         '''
         Optimize the model and store results in TMB_Model.TMB.fit
         Parameters
@@ -307,24 +396,32 @@ class model:
         # fit the model
         if quiet:
             self.R.r('sink("/dev/null")')
-        self.TMB.fit = self.R.r[opt_fun](start=get_R_attr(self.TMB.model, 'par'), objective=get_R_attr(self.TMB.model, 'fn'),
-            gradient=get_R_attr(self.TMB.model, 'gr'), method=method, **kwargs)
+        self.TMB.fit = self.R.r[opt_fun](start=get_R_attr(self.TMB.model, 'par'),
+                                         objective=get_R_attr(
+                                             self.TMB.model, 'fn'),
+                                         gradient=get_R_attr(
+                                             self.TMB.model, 'gr'),
+                                         method=method, **kwargs)
         if quiet:
             self.R.r('sink()')
         else:
-            print('\nModel optimization complete in {:.1f}s.\n'.format(time.time()-start))
+            print('\nModel optimization complete in {:.1f}s.\n'.format(
+                time.time()-start))
 
         # check for convergence
-        self.convergence = self.TMB.fit[self.TMB.fit.names.index('convergence')][0]
+        self.convergence = self.TMB.fit[self.TMB.fit.names.index(
+            'convergence')][0]
         if warning and self.convergence != 0:
-            print '\nThe model did not successfully converge, exited with the following warning message:'
-            print self.TMB.fit[self.TMB.fit.names.index('message')][0] + '\n'
+            print(
+                '\nThe model did not successfully converge, exited with the following warning message:')
+            print(self.TMB.fit[self.TMB.fit.names.index('message')][0] + '\n')
 
         # simulate parameters
         if not quiet:
             print('\n{}\n'.format(''.join(['-' for i in range(80)])))
         if not noparams:
-            self.simulate_parameters(draws=draws, quiet=quiet, params=params, constrain=constrain)
+            self.simulate_parameters(
+                draws=draws, quiet=quiet, params=params, constrain=constrain)
 
     def report(self, name):
         '''
@@ -368,7 +465,8 @@ class model:
             self.sdreport = self.TMB.sdreport(self.TMB.model, getJointPrecision=True,
                                               hessian_fixed=get_R_attr(self.TMB.model, 'he')())
         else:
-            self.sdreport = self.TMB.sdreport(self.TMB.model, getJointPrecision=True)
+            self.sdreport = self.TMB.sdreport(
+                self.TMB.model, getJointPrecision=True)
 
         # extraction convenience function
         # filters the object down to just a list of desired parameters
@@ -380,18 +478,21 @@ class model:
                 return(obj[ii,ii]);
             };
         }''')
-        
+
         # extract the joint precision matrix
         if not self.random:
-            joint_prec_full = self.R.r('function(m) { return(1./m) }')(get_R_attr(self.sdreport, 'cov.fixed'))
+            joint_prec_full = self.R.r(
+                'function(m) { return(1./m) }')(get_R_attr(self.sdreport, 'cov.fixed'))
             joint_prec_names = get_R_attr(self.sdreport, 'par.fixed').names
-            joint_prec_dense = extract_params(joint_prec_full, joint_prec_names, params)
+            joint_prec_dense = extract_params(
+                joint_prec_full, joint_prec_names, params)
             joint_prec_R = self.R.r('as')(joint_prec_dense, 'sparseMatrix')
         else:
             joint_prec_full = get_R_attr(self.sdreport, 'jointPrecision')
             joint_prec_names = self.R.r('row.names')(joint_prec_full)
-            joint_prec_R = extract_params(joint_prec_full, joint_prec_names, params)
-            
+            joint_prec_R = extract_params(
+                joint_prec_full, joint_prec_names, params)
+
         # convert joint precision matrix to scipy.sparse.csc_matrix
         # (bypassing dense conversion step that happens if you use rpy2)
         def get_R_slot(obj, slot):
@@ -406,7 +507,7 @@ class model:
         else:
             ordered_params = np.array(self.R.r('row.names')(joint_prec_R))
 
-        ### extract fixed effects
+        # extract fixed effects
         # means
         fixed_mean_raw = get_R_attr(self.sdreport, 'par.fixed')
         # sds
@@ -415,9 +516,10 @@ class model:
         fixed_names = fixed_mean_raw.names
         # keep just selected
         fixed_mean = extract_params(fixed_mean_raw, fixed_names, params)
-        fixed_sd = extract_params(self.R.r('sqrt')(fixed_sd_raw), fixed_names, params)
+        fixed_sd = extract_params(self.R.r('sqrt')(
+            fixed_sd_raw), fixed_names, params)
 
-        ### extract random effects
+        # extract random effects
         if self.random:
             # means
             ran_mean_raw = get_R_attr(self.sdreport, 'par.random')
@@ -427,69 +529,74 @@ class model:
             ran_names = ran_mean_raw.names
             # keep just selected
             ran_mean = extract_params(ran_mean_raw, ran_names,  params)
-            ran_sd = extract_params(self.R.r('sqrt')(ran_sd_raw), ran_names, params)
+            ran_sd = extract_params(self.R.r('sqrt')(
+                ran_sd_raw), ran_names, params)
         else:
             ran_names = []
 
-        ### put the means/sds in the right order
-        ## the reason being that the joint precision matrix is based on order of model specification, ignoring random vs fixed
+        # put the means/sds in the right order
+        # the reason being that the joint precision matrix is based on order of
+        # model specification, ignoring random vs fixed
         # initialize R vectors
-        means = self.R.FloatVector([self.R.NA_Real for i in xrange(len(ordered_params))])
-        sds = self.R.FloatVector([self.R.NA_Real for i in xrange(len(ordered_params))])
+        means = self.R.FloatVector(
+            [self.R.NA_Real for i in range(len(ordered_params))])
+        sds = self.R.FloatVector(
+            [self.R.NA_Real for i in range(len(ordered_params))])
         # loop through and add the parameters to the means/sds in the correct order
         for p in set(ordered_params):
             # index in joint precision matrix
-            i_joint = [ii for ii,pp in enumerate(ordered_params) if pp == p]
+            i_joint = [ii for ii, pp in enumerate(ordered_params) if pp == p]
             # index in random effects
-            i_ran = [ii for ii,pp in enumerate(ran_names) if pp == p]
+            i_ran = [ii for ii, pp in enumerate(ran_names) if pp == p]
             # index in fixed effects
-            i_fixed = [ii for ii,pp in enumerate(fixed_names) if pp == p]
+            i_fixed = [ii for ii, pp in enumerate(fixed_names) if pp == p]
             # copy into the appropriate position
             if i_ran:
                 means[i_joint[0]:i_joint[-1]+1] = ran_mean[i_ran[0]:i_ran[-1]+1]
                 sds[i_joint[0]:i_joint[-1]+1] = ran_sd[i_ran[0]:i_ran[-1]+1]
             elif i_fixed:
-                means[i_joint[0]:i_joint[-1]+1] = fixed_mean[i_fixed[0]:i_fixed[-1]+1]
+                means[i_joint[0]:i_joint[-1] +
+                      1] = fixed_mean[i_fixed[0]:i_fixed[-1]+1]
                 sds[i_joint[0]:i_joint[-1]+1] = fixed_sd[i_fixed[0]:i_fixed[-1]+1]
 
-        ### generate draws
+        # generate draws
         # convert mean/sd to python
         means = np.array(means)
         sds = np.array(sds)
-        ## simulation function
+        # simulation function
         # see http://en.wikipedia.org/wiki/Multivariate_normal_distribution#Drawing_values_from_the_distribution
+
         def gen_draws(mu, prec, n):
-            try:
-		from sksparse.cholmod import cholesky
-	    except:
-		from scikits.sparse.cholmod import cholesky
-            from scipy.sparse.linalg import spsolve
-            z = np.random.normal(size=(mu.shape[0],n))
+
+            z = np.random.normal(size=(mu.shape[0], n))
             chol_jp = cholesky(prec)
-            ### note: would typically use scikits.sparse.cholmod.cholesky.solve_Lt,
-            ### but there seems to be a bug there: https://github.com/njsmith/scikits-sparse/issues/9#issuecomment-76862652
-            return mu[:,np.newaxis] + chol_jp.apply_Pt(spsolve(chol_jp.L().T, z))
-        #### make draws
+            # note: would typically use scikits.sparse.cholmod.cholesky.solve_Lt,
+            # but there seems to be a bug there:
+            # https://github.com/njsmith/scikits-sparse/issues/9#issuecomment-76862652
+            return mu[:, np.newaxis] + chol_jp.apply_Pt(spsolve(chol_jp.L().T, z))
+        # make draws
         if draws:
             param_draws = gen_draws(means, joint_prec, draws)
 
-        ### store results
+        # store results
         # constrain draws if requested
         if constrain and draws:
             # find which draws are more than {constraint} standard deviations from the mean
-            wacky_draws = np.where(np.any([ \
-                          np.greater(param_draws.T, means + (constrain * sds)), \
-                          np.less(param_draws.T, means - (constrain * sds))], axis=0).T)
+            wacky_draws = np.where(np.any([
+                np.greater(param_draws.T, means + (constrain * sds)),
+                np.less(param_draws.T, means - (constrain * sds))], axis=0).T)
             # replace those draws with the mean
             param_draws[wacky_draws] = means[wacky_draws[0]]
         # add parameters' mean, sd, and optionally draws to the parameters dictionary
         for p in set(ordered_params):
-            i = [ii for ii,pp in enumerate(ordered_params) if pp == p] # names will be the same for every item in a vector/matrix, so find all corresponding indices
+            # names will be the same for every item in a vector/matrix, so find all corresponding indices
+            i = [ii for ii, pp in enumerate(ordered_params) if pp == p]
             if draws:
                 if type(self.init[p]) == np.ndarray:
-                    these_draws = param_draws[i,].reshape(list(self.init[p].shape) + [draws], order='F')
+                    these_draws = param_draws[i, ].reshape(
+                        list(self.init[p].shape) + [draws], order='F')
                 else:
-                    these_draws = param_draws[i,]
+                    these_draws = param_draws[i, ]
                 self.parameters[p] = {
                     'mean': means[i],
                     'sd': sds[i],
@@ -508,9 +615,10 @@ class model:
             'name': ordered_params
         }
 
-        ### print results
+        # print results
         if not quiet:
-            print('\nSimulated {n} draws in {t:.1f}s.\n'.format(n=draws, t=time.time()-start))
+            print('\nSimulated {n} draws in {t:.1f}s.\n'.format(
+                n=draws, t=time.time()-start))
             self.print_parameters()
 
     def draws(self, parameter):
@@ -524,16 +632,21 @@ class model:
         Print summary statistics of the model parameter fits
         '''
         np.set_printoptions(threshold=5, edgeitems=2)
-        for p,v in self.parameters.iteritems():
+        for p, v in self.parameters.items():
             if 'draws' in v:
                 d = v['draws']
                 if d.shape[0] == 1:
-                    print('{p}:\n\tmean\t{m}\n\tsd\t{s}\n\tdraws\t{d}\n\tshape\t{z}'.format(p=p, m=v['mean'], s=v['sd'], d=d, z=d.shape))
+                    print('{p}:\n\tmean\t{m}\n\tsd\t{s}\n\tdraws\t{d}\n\tshape\t{z}'.format(
+                        p=p, m=v['mean'], s=v['sd'], d=d, z=d.shape))
                 elif len(d.shape) == 2:
-                    print('{p}:\n\tmean\t{m}\n\tsd\t{s}\n\tdraws\t{d}\n\tshape\t{z}'.format(p=p, m=v['mean'], s=v['sd'], d='[{0},\n\t\t ...,\n\t\t {1}]'.format(d[0,:], d[d.shape[0]-1,:]), z=d.shape))
+                    print('{p}:\n\tmean\t{m}\n\tsd\t{s}\n\tdraws\t{d}\n\tshape\t{z}'.format(
+                        p=p, m=v['mean'], s=v['sd'], d='[{0},\n\t\t ...,\n\t\t {1}]'.format(
+                            d[0, :], d[d.shape[0]-1, :]), z=d.shape))
                 else:
-                    print('{p}:\n\tmean\t{m}\n\tsd\t{s}\n\tdraws\t{d}\n\tshape\t{z}'.format(p=p, m=v['mean'], s=v['sd'], d='[[{0},\n\t\t ...,\n\t\t {1}]]'.format(d[0,0,:], d[d.shape[0]-1,d.shape[1]-1,:]), z=d.shape))
+                    print('{p}:\n\tmean\t{m}\n\tsd\t{s}\n\tdraws\t{d}\n\tshape\t{z}'.format(
+                        p=p, m=v['mean'], s=v['sd'], d='[[{0},\n\t\t ...,\n\t\t {1}]]'.format(
+                            d[0, 0, :], d[d.shape[0]-1, d.shape[1]-1, :]), z=d.shape))
             else:
-                print('{p}:\n\tmean\t{m}\n\tsd\t{s}\n\tdraws\tNone'.format(p=p, m=v['mean'], s=v['sd']))
+                print('{p}:\n\tmean\t{m}\n\tsd\t{s}\n\tdraws\tNone'.format(
+                    p=p, m=v['mean'], s=v['sd']))
         np.set_printoptions(threshold=1000, edgeitems=3)
-
